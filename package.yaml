@@ -1,0 +1,9 @@
+name:               proyecto2
+version:            0.1.0.0
+resolver:           lts-18.0  # Puedes usar la versión de LTS que prefieras
+packages:
+  - .
+dependencies:
+  - base >= 4.7 && < 5
+  - aeson
+  - split

@@ -1,0 +1,26 @@
+cabal-version:       >=1.10
+name:                proyecto2
+version:             0.1.0.0
+author:              Tu Nombre
+maintainer:          tu@email.com
+build-type:          Simple
+
+executable proyecto2
+  main-is:             main.hs
+  hs-source-dirs:      .
+  default-language:    Haskell2010
+
+  -- Módulos auxiliares
+  other-modules:       ManipulacionDatos
+                       Menu
+                       MenuSistema
+
+  -- Dependencias necesarias
+  build-depends:       base >=4.7 && <5,
+                       aeson,
+                       bytestring,
+                       directory,
+                       split,
+                       time
+
+  ghc-options:         -Wall

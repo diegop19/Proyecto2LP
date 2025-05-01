@@ -1,12 +1,15 @@
+{-# LANGUAGE DeriveGeneric #-}
 module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER) where
     import Text.Printf (printf)
     import Text.Read(readMaybe)
     import GHC.Generics (Generic)
     import System.Directory (doesFileExist)
+    import Data.Time.Calendar (Day)
     import Data.Aeson 
-    --import Data.Time
+    import Data.Ord (comparing)
     import Data.Maybe (catMaybes)
     import Data.List.Split (splitOn)
+    import Data.List (maximumBy)
     import Data.List (nubBy)
     import Data.List (find)
     import qualified Data.ByteString.Lazy.Char8 as BL
@@ -31,7 +34,8 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     instance ToJSON Trabajador
 
     data Parcela = Parcela {
-          nombreParcela :: String
+          codigoParcela :: Int
+        , nombreParcela :: String
         , zona :: String
         , areaEnMetrosCuadrados :: Int
         , tipoVegetal :: String
@@ -46,7 +50,8 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
           identificadorCosecha :: Int
         , parcelaCosecha :: Parcela
         , trabajadores :: [Trabajador]
-        --, fechaInicio :: 
+        , fechaInicio :: Day
+        , fechaFinal :: Day
 
     }deriving(Show, Generic)
 
@@ -92,7 +97,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                     Right hs -> return hs
                     Left _ -> return []
             else do
-                putStrLn("No, hay herramientas para mostrar")
+                crearArchivoJSON "herramientas.json"
                 return []
 
     mostrarListaHerramientas :: [Herramienta] -> IO ()
@@ -190,28 +195,45 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
     leerParcelas :: FilePath -> IO [Parcela]
     leerParcelas archivo = do
+        existe <- validarExistencia archivo
+        if not existe 
+            then crearArchivoJSON archivo
+            else putStrLn("")
         contenido <- BL.readFile archivo
         case decode contenido of
             Just parcelas -> return parcelas
             Nothing -> return []
 
-
+    obtenerNuevoIdParcela :: FilePath -> IO Int
+    obtenerNuevoIdParcela archivo = do
+        parcelas <- leerParcelas archivo
+        return $ case parcelas of
+            [] -> 1
+            ps -> maximum (map codigoParcela ps) + 1
+            
     guardarParcelas :: FilePath -> [Parcela] -> IO ()
     guardarParcelas archivo parcelas = do
-        BL.writeFile archivo (encode parcelas)
+        existe <- validarExistencia archivo
+        if existe then
+            BL.writeFile archivo (encode parcelas)
+            else do
+                crearArchivoJSON archivo
+                BL.writeFile archivo (encode parcelas)
 
-    crearParcela :: String -> String -> String -> Double -> [Herramienta] -> Int -> IO()
+    crearParcela :: String -> String -> String -> Double -> [Herramienta] -> Int -> IO ()
     crearParcela nombreParcela zonaParcela tipoVegetal precioPorKilo listaHerramientas areaEnMetrosCuadrados = do
         existe <- validarExistencia "parcelas.json"
         if not existe
-            then
-                crearArchivoJSON "parcelas.json"
-            else putStrLn("Existente")
+            then crearArchivoJSON "parcelas.json"
+            else putStrLn "Existente"
+
         listaParcelas <- leerParcelas "parcelas.json"
+        id <- obtenerNuevoIdParcela "parcelas.json"
+
+        let nuevaParcela = Parcela id nombreParcela zonaParcela areaEnMetrosCuadrados tipoVegetal precioPorKilo listaHerramientas
         let parcelasActualizadas = listaParcelas ++ [nuevaParcela]
         guardarParcelas "parcelas.json" parcelasActualizadas
-        where
-            nuevaParcela = Parcela nombreParcela zonaParcela areaEnMetrosCuadrados tipoVegetal precioPorKilo listaHerramientas 
+
     agregarParcela :: IO()
     agregarParcela = do
         putStrLn("Escriba el nombre de la parcela.")
@@ -227,6 +249,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         listaCodigos <- getLine
         listaHerramientas <- obtenerHerramientas "herramientas.json"
         let herramientasParcela = obtenerHerramientasParaParcela listaCodigos listaHerramientas
+        nuevoId <- obtenerNuevoIdParcela "parcelas.json"
         if null herramientasParcela then do
             putStrLn("Debes agregar al menos una herramienta para la parcela")
             agregarParcela
@@ -246,7 +269,8 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         else mapM_ imprimirParcela parcelas
 
     imprimirParcela :: Parcela -> IO ()
-    imprimirParcela (Parcela nombre zona area vegetal precio herramientas) = do
+    imprimirParcela (Parcela id nombre zona area vegetal precio herramientas) = do
+        putStrLn $ "ID DE LA PARCELA " ++ show id
         putStrLn $ "Nombre de la parcela: " ++ nombre
         putStrLn $ "Zona: " ++ zona
         putStrLn $ "Área (m²): " ++ show area
@@ -263,4 +287,32 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         printf "  Código: %s, Nombre: %s, Descripción: %s, Tipo: %s\n" codigo nombre descripcion tipo
 {-------------------------------------------------------------------------------------------}
 --De aquí en adelante se trabajarán las cosechas
+{-
+    obtenerCosechas :: FilePath -> IO [Cosecha]
+    obtenerCosechas archivo = do
+        existe <- validarExistencia archivo  
+        if existe
+            then do
+                contenido <- BL.readFile archivo
+                case eitherDecode contenido of
+                    Right hs -> return hs
+                    Left _ -> return []
+            else do
+                crearArchivoJSON archivo
+                return []
 
+    guardarCosechas :: [Cosecha] -> IO()
+    guardarCosechas cs = do
+        BL.writeFile "cosechas.json" (encode cs)
+
+    agregarCosechaJSON :: Cosecha -> IO()
+    agregarCosechaJSON cosecha = do
+        cs <- obtenerCosechas "cosechas.json"
+        let listaActualizada = cs ++ [cosecha]
+        guardarCosechas listaActualizada
+
+    crearCosecha :: Int -> Parcela -> [Trabajador] -> Day -> Day -> IO()
+    crearCosecha identificadorCosecha parcela ts fechaInicio fechaFinal = do
+        let nuevaCosecha = (Cosecha identificadorCosecha parcela ts fechaInicio fechaFinal)
+        agregarCosechaJSON nuevaCosecha
+        -}
