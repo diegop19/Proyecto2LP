@@ -114,6 +114,15 @@ module MenuSistema where
         putStrLn("5- Consulta disponibilidad de parcela")
         putStrLn("6- Regresar")
         putStrLn("Elige una opción porfavor")
+        opcion <- getLine
+        case opcion of
+            "1" -> do
+                obtenerDatosCosecha
+                menuGeneral
+            "6" -> menuPrincipal
+            _ -> do
+                putStrLn("Error, comando incorrecto")
+                menuGeneral
 
     opcionesCancelacionModificacion :: IO()
     opcionesCancelacionModificacion = do

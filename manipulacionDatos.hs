@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha) where
     import Text.Printf (printf)
     import Text.Read(readMaybe)
     import GHC.Generics (Generic)
     import System.Directory (doesFileExist)
-    import Data.Time.Calendar (Day)
+    import Data.Time(Day)
+    import Data.Time.Clock(getCurrentTime, utctDay)
+    import Data.Time.Format (parseTimeM, defaultTimeLocale)
     import Data.Aeson 
     import Data.Ord (comparing)
     import Data.Maybe (catMaybes)
@@ -287,7 +289,61 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         printf "  Código: %s, Nombre: %s, Descripción: %s, Tipo: %s\n" codigo nombre descripcion tipo
 {-------------------------------------------------------------------------------------------}
 --De aquí en adelante se trabajarán las cosechas
-{-
+    validarFormatoFecha :: String -> Maybe Day
+    validarFormatoFecha fechaStr =
+        parseTimeM True defaultTimeLocale "%Y-%m-%d" fechaStr
+
+    pedirFechaValida :: IO Day
+    pedirFechaValida = do
+        input <- getLine
+        case validarFormatoFecha input of
+            Just fecha -> return fecha
+            Nothing -> do
+                putStrLn "Formato inválido. Intente de nuevo (ejemplo: 2025-05-01)."
+                pedirFechaValida
+
+    validarFechas :: Day -> Day -> IO Bool
+    validarFechas fechaInicio fechaFinal = do
+        hoy <- utctDay <$> getCurrentTime
+        return (fechaInicio < fechaFinal && fechaInicio <= hoy) 
+
+    
+    pedirCantidadEsperada :: IO Double
+    pedirCantidadEsperada = do
+        putStrLn "Escriba la cantidad esperada a recolectar en Kg."
+        input <- getLine
+        case readMaybe input of
+            Just precio -> return precio
+            Nothing -> do
+                putStrLn "Entrada inválida. Intenta de nuevo."
+                pedirPrecio
+
+
+    obtenerDatosCosecha :: IO()
+    obtenerDatosCosecha = do
+        parcelas <- leerParcelas "parcelas.json"
+        mostrarParcelas parcelas
+        putStrLn("Ingrese el id de la parcela en la que va a cosechar")
+        idParcela <- getLine
+        putStrLn ("Ingrese la fecha de inicio de la cosecha (Año-Mes-Día)")
+        fechaInicio <- pedirFechaValida
+        putStrLn ("Ingrese la fecha de finalizacion de la cosecha (Año-Mes-Día)")
+        fechaFinal <- pedirFechaValida
+        putStrLn("Ingrese el vegetal a cosechar (debe de coincidir con el vegetal de la parcela elegida)")
+        vegetal <- getLine
+        ts <- obtenerTrabajadores "trabajadores.json" 
+        mostrarListaTrabajadores ts
+        putStrLn ("Seleccione los trabajadores que quiere contratar para esta cosecha, con su cedula separados por comas\n Los elementos erróneos no serán agregados")
+        cedulasTrabajadores <- getLine
+        cantidadEsperada <- pedirCantidadEsperada
+        fechasCorrectas <- validarFechas fechaInicio fechaFinal
+        if fechasCorrectas 
+            then putStrLn("Fechas incorrectas")
+            else putStrLn("Fechas Correctas")
+        putStrLn("Cantidad Esperada: "++ show cantidadEsperada)
+        putStrLn("Fecha inicio: "++show fechaInicio++". Fecha final: "++show fechaFinal)
+
+
     obtenerCosechas :: FilePath -> IO [Cosecha]
     obtenerCosechas archivo = do
         existe <- validarExistencia archivo  
@@ -315,4 +371,3 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     crearCosecha identificadorCosecha parcela ts fechaInicio fechaFinal = do
         let nuevaCosecha = (Cosecha identificadorCosecha parcela ts fechaInicio fechaFinal)
         agregarCosechaJSON nuevaCosecha
-        -}
