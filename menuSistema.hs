@@ -23,7 +23,7 @@ module MenuSistema where
     menuOperacional ::  IO()
     menuOperacional = do 
         putStrLn("-------Menu Operacional------")
-        putStrLn("1- Ver información de trabajadores")
+        putStrLn("1- Opciones de trabajadores")
         putStrLn("2- Cargar y mostrar Herramientas de campo")
         putStrLn("3- Registrar y mostrar parcelas de cultivo")
         putStrLn("4- Informe de cosechas")
@@ -31,9 +31,7 @@ module MenuSistema where
         putStrLn("Elige una opción porfavor")
         opcion <- getLine
         case opcion of
-            "1" -> do
-                    mostrarListaTrabajadoresUSER "trabajadores.json"
-                    menuOperacional
+            "1" -> menuTrabajadores
             "2" -> opcionesHerramientas
             "3" -> registrarMostrarParcelas
             "4" -> menuInformeCosechas
@@ -41,6 +39,28 @@ module MenuSistema where
             _ -> do
                 putStrLn("Error, comando incorrecto")
                 menuOperacional
+{-----------------------------------------------------------}
+-- MENU DE TRABAJADORES
+    menuTrabajadores :: IO()
+    menuTrabajadores = do
+        putStrLn("---------Menu Trabajadores-------")
+        putStrLn("1 - Agregar Trabajador")
+        putStrLn("2 - Ver trabajadores")
+        putStrLn("3 - Regresar")
+        putStrLn("Elija una opción porfavor")
+        opcion <- getLine
+        case opcion of
+            "1" -> do 
+                agregarTrabajador
+                menuTrabajadores
+            "2" -> do
+                mostrarListaTrabajadoresUSER "trabajadores.json"
+                menuTrabajadores
+            "3" -> menuOperacional
+            _ -> do
+                putStrLn("Error, comando incorrecto")
+                menuTrabajadores
+
     {------------------------------------------------------------------------}
     -- MOSTRAR OPCIONES DE HERRAMIENTAS
     opcionesHerramientas :: IO()

@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador) where
     import Text.Printf (printf)
     import Text.Read(readMaybe)
     import GHC.Generics (Generic)
@@ -17,10 +17,10 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     import qualified Data.ByteString.Lazy.Char8 as BL
 
     data Herramienta = Herramienta {   
-        codigoHerramienta :: String
-    ,   nombreHerramienta :: String
-    ,   descripcionHerramienta :: String
-    ,   tipoHerramienta :: String
+          codigoHerramienta :: String
+        , nombreHerramienta :: String
+        , descripcionHerramienta :: String
+        , tipoHerramienta :: String
     } deriving (Show, Generic)
 
     instance FromJSON Herramienta
@@ -30,6 +30,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
           cedula :: String
         , nombreCompleto :: String
         , rol :: String
+        , cantidadCosechasTrabajadas :: Int
     }deriving (Show, Generic)
 
     instance FromJSON Trabajador
@@ -43,6 +44,8 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         , tipoVegetal :: String
         , precioPorKilo :: Double
         , herramientas :: [Herramienta]
+        , historialVenta :: Double
+        , volumenCosecha :: Double
     }deriving (Show, Generic)
 
     instance FromJSON Parcela
@@ -50,10 +53,14 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
     data Cosecha = Cosecha {
           identificadorCosecha :: Int
-        , parcelaCosecha :: Parcela
+        , idParcelaCosecha :: Int
         , trabajadores :: [Trabajador]
         , fechaInicio :: Day
         , fechaFinal :: Day
+        , produccionEsperada :: Double
+        , produccionObtenida :: Double
+        , tipoVegetalCosecha :: String
+        , estadoCosecha :: Bool
 
     }deriving(Show, Generic)
 
@@ -62,6 +69,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
 --TODA ESTA ZONA ES DE TRABAJADORES Y HERRAMIENTAS
 {----------------------------------------------------------------------------}
+    
     obtenerTrabajadores :: FilePath -> IO[Trabajador]
     obtenerTrabajadores archivoTrabajadores = do
         contenido <-  BL.readFile archivoTrabajadores
@@ -75,12 +83,12 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         putStrLn lineaSeparadora
         mapM_ imprimirFila trabajadores
         where
-            encabezado = printf "%-10s | %-35s | %-10s"
-                                "Cedula" "Nombre" "rol"
+            encabezado = printf "%-10s | %-35s | %-10s | %-20s"
+                                "Cedula" "Nombre" "rol" "Cosechas"
             lineaSeparadora = replicate 75 '-'
-            imprimirFila (Trabajador ced nom rol) =
-                printf "%-10s | %-35s | %-10s\n" ced nom rol
-
+            imprimirFila (Trabajador ced nom rol cosechas) =
+                printf "%-10s | %-35s | %-10s | %-20s\n" ced nom rol (show cosechas)
+    
     crearArchivoJSON :: String -> IO()
     crearArchivoJSON nombreArchivo = do
         BL.writeFile nombreArchivo (BL.pack "[]")
@@ -88,6 +96,34 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
          
     validarExistencia :: String -> IO Bool
     validarExistencia nombreArchivo = doesFileExist nombreArchivo
+
+    guardarTrabajadores :: [Trabajador] -> FilePath -> IO()
+    guardarTrabajadores ts archivo = do
+        existe <- validarExistencia archivo
+        if existe then
+            BL.writeFile archivo (encode ts)
+            else do
+                crearArchivoJSON archivo
+                BL.writeFile archivo (encode ts)
+
+
+    agregarTrabajador :: IO()
+    agregarTrabajador = do
+        putStrLn("Agregue el numero de cédula del trabajador")
+        cedula <- getLine
+        putStrLn("Agregue el nombre del trabajador")
+        nombre <- getLine
+        putStrLn("Agregue el rol del trabajador")
+        rol <- getLine
+        existe <- validarExistencia "trabajadores.json"
+        if existe then putStrLn("Archivo encontrado")
+        else crearArchivoJSON "trabajadores.json"
+        ts <- obtenerTrabajadores "trabajadores.json"
+        let cosechasTrabajadas = 0
+        let nuevoTrabajador = Trabajador cedula nombre rol cosechasTrabajadas
+        let listaTrabajadores = ts ++ [nuevoTrabajador]
+        guardarTrabajadores listaTrabajadores "trabajadores.json"
+
 
     obtenerHerramientas :: FilePath -> IO [Herramienta]
     obtenerHerramientas archivo = do
@@ -159,8 +195,14 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     mostrarHerramientasUSER rutaJSON = do
         listaHerramientas <- obtenerHerramientas rutaJSON
         mostrarListaHerramientas listaHerramientas
+
+
     mostrarListaTrabajadoresUSER :: FilePath -> IO()
     mostrarListaTrabajadoresUSER archivoTrabajadores = do
+        existe <- validarExistencia archivoTrabajadores
+        if existe then putStrLn("Archivo encontrado")
+        else crearArchivoJSON archivoTrabajadores
+
         listaTrabajadores <- obtenerTrabajadores archivoTrabajadores
         mostrarListaTrabajadores listaTrabajadores  
 {------------------------------------------------------------------------------}
@@ -232,7 +274,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         listaParcelas <- leerParcelas "parcelas.json"
         id <- obtenerNuevoIdParcela "parcelas.json"
 
-        let nuevaParcela = Parcela id nombreParcela zonaParcela areaEnMetrosCuadrados tipoVegetal precioPorKilo listaHerramientas
+        let nuevaParcela = Parcela id nombreParcela zonaParcela areaEnMetrosCuadrados tipoVegetal precioPorKilo listaHerramientas 0 0
         let parcelasActualizadas = listaParcelas ++ [nuevaParcela]
         guardarParcelas "parcelas.json" parcelasActualizadas
 
@@ -271,12 +313,14 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         else mapM_ imprimirParcela parcelas
 
     imprimirParcela :: Parcela -> IO ()
-    imprimirParcela (Parcela id nombre zona area vegetal precio herramientas) = do
+    imprimirParcela (Parcela id nombre zona area vegetal precio herramientas totalVenta totalCosechado) = do
         putStrLn $ "ID DE LA PARCELA " ++ show id
         putStrLn $ "Nombre de la parcela: " ++ nombre
         putStrLn $ "Zona: " ++ zona
         putStrLn $ "Área (m²): " ++ show area
         putStrLn $ "Tipo de vegetal: " ++ vegetal
+        putStrLn $ "Total recaudado (en colones): "++ show totalVenta
+        putStrLn $ "Total cosechado(En Kg): "++show totalCosechado
         printf "Precio por Kg: %.2f\n" precio
         putStrLn "Herramientas asociadas:"
         if null herramientas
@@ -305,7 +349,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     validarFechas :: Day -> Day -> IO Bool
     validarFechas fechaInicio fechaFinal = do
         hoy <- utctDay <$> getCurrentTime
-        return (fechaInicio < fechaFinal && fechaInicio <= hoy) 
+        return (fechaInicio < fechaFinal && fechaInicio >= hoy) 
 
     
     pedirCantidadEsperada :: IO Double
@@ -318,13 +362,32 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 putStrLn "Entrada inválida. Intenta de nuevo."
                 pedirPrecio
 
+    buscarTrabajador :: String -> [Trabajador] -> Maybe Trabajador
+    buscarTrabajador cedula = find (\(Trabajador c _ _ _) -> c == cedula)
 
+    obtenerTrabajadoresPorCedulas :: String -> [Trabajador] -> [Trabajador]
+    obtenerTrabajadoresPorCedulas cedulas trabajadores =
+        let cedulasSeparadas = splitOn "," cedulas
+            trabajadoresEncontrados = map (`buscarTrabajador` trabajadores) cedulasSeparadas
+        in catMaybes trabajadoresEncontrados
+
+    obtenerNuevoIdCosecha :: FilePath -> IO Int
+    obtenerNuevoIdCosecha archivo = do
+        cosechas <- obtenerCosechas archivo
+        return $ case cosechas of
+            [] -> 1
+            cs -> maximum (map identificadorCosecha cs) + 1
+    
+    convertirAEntero :: String -> Maybe Int
+    convertirAEntero = readMaybe
+    
     obtenerDatosCosecha :: IO()
     obtenerDatosCosecha = do
         parcelas <- leerParcelas "parcelas.json"
         mostrarParcelas parcelas
         putStrLn("Ingrese el id de la parcela en la que va a cosechar")
-        idParcela <- getLine
+        idParcelaStr <- getLine
+        let idParcelaMaybe = convertirAEntero idParcelaStr
         putStrLn ("Ingrese la fecha de inicio de la cosecha (Año-Mes-Día)")
         fechaInicio <- pedirFechaValida
         putStrLn ("Ingrese la fecha de finalizacion de la cosecha (Año-Mes-Día)")
@@ -335,13 +398,59 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         mostrarListaTrabajadores ts
         putStrLn ("Seleccione los trabajadores que quiere contratar para esta cosecha, con su cedula separados por comas\n Los elementos erróneos no serán agregados")
         cedulasTrabajadores <- getLine
+        let trabajadores = obtenerTrabajadoresPorCedulas cedulasTrabajadores ts
         cantidadEsperada <- pedirCantidadEsperada
         fechasCorrectas <- validarFechas fechaInicio fechaFinal
+        existe <- validarExistencia "cosechas.json"
+        if existe then putStrLn("Verificando existencia...")
+        else crearArchivoJSON "cosechas.json"
+        idCosecha <- obtenerNuevoIdCosecha "cosechas.json"
         if fechasCorrectas 
-            then putStrLn("Fechas incorrectas")
-            else putStrLn("Fechas Correctas")
-        putStrLn("Cantidad Esperada: "++ show cantidadEsperada)
-        putStrLn("Fecha inicio: "++show fechaInicio++". Fecha final: "++show fechaFinal)
+            then do
+                case idParcelaMaybe of
+                    Just idParcela -> do
+                        let nuevaCosecha = Cosecha idCosecha idParcela trabajadores fechaInicio fechaFinal cantidadEsperada 0 vegetal True
+                        cs <- obtenerCosechas "cosechas.json"
+                        let esDisponible = validarDisponibilidad nuevaCosecha cs
+                        ps <- leerParcelas "parcelas.json"
+                        let vegetalCoincide = verificarTipoVegetal (tipoVegetalCosecha nuevaCosecha) (idParcelaCosecha nuevaCosecha) ps
+                        if vegetalCoincide 
+                            then do 
+                                putStrLn("El vegetal es el correcto...")
+                                if esDisponible
+                                    then do 
+                                        putStrLn("No hay choques de horario...")
+                                        putStrLn("Guardando...")
+                                        agregarCosechaJSON nuevaCosecha
+                                    else do
+                                        putStrLn("Hay choques de horario, verifique e intente de nuevo")
+                            else do
+                                putStrLn("El vegetal no coincide con el de la parcela. verifique e intente de nuevo")
+                    Nothing -> do
+                        putStrLn "El código de parcela no es un número válido."
+                        obtenerDatosCosecha
+        else do
+            putStrLn("Las fechas ingresadas son incorrectas, verifíquelas e intente de nuevo")
+    
+    verificarTipoVegetal :: String -> Int -> [Parcela] -> Bool
+    verificarTipoVegetal vegetal codigoP parcelas =
+        case find (\p -> codigoParcela p == codigoP) parcelas of
+            Just parcela -> tipoVegetal parcela == vegetal
+            Nothing -> False
+
+    validarDisponibilidad :: Cosecha -> [Cosecha] -> Bool
+    validarDisponibilidad cosechaNueva cosechas =
+        all fechasNoChocan cosechasFiltradas
+        where
+            idParcelaNueva = idParcelaCosecha cosechaNueva
+            fechaInicioNueva = fechaInicio cosechaNueva
+            fechaFinalNueva = fechaFinal cosechaNueva
+
+            cosechasFiltradas = filter (\c -> estadoCosecha c &&
+                                         idParcelaCosecha c == idParcelaNueva) cosechas
+            fechasNoChocan cosechaExistente =
+                fechaInicioNueva > fechaFinal cosechaExistente || 
+                fechaFinalNueva < fechaInicio cosechaExistente 
 
 
     obtenerCosechas :: FilePath -> IO [Cosecha]
@@ -366,8 +475,9 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         cs <- obtenerCosechas "cosechas.json"
         let listaActualizada = cs ++ [cosecha]
         guardarCosechas listaActualizada
-
-    crearCosecha :: Int -> Parcela -> [Trabajador] -> Day -> Day -> IO()
-    crearCosecha identificadorCosecha parcela ts fechaInicio fechaFinal = do
-        let nuevaCosecha = (Cosecha identificadorCosecha parcela ts fechaInicio fechaFinal)
+{-
+    crearCosecha :: Int -> Int -> [Trabajador] -> Day -> Day -> Double -> IO()
+    crearCosecha identificadorCosecha identificadorParcela ts fechaInicio fechaFinal cantidadEsperada = do
+        let nuevaCosecha = (Cosecha identificadorCosecha identificadorParcela ts fechaInicio fechaFinal cantidadEsperada 0 True)
         agregarCosechaJSON nuevaCosecha
+-}
