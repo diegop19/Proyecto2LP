@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER) where
     import Text.Printf (printf)
     import Text.Read(readMaybe)
     import GHC.Generics (Generic)
     import System.Directory (doesFileExist)
-    import Data.Time(Day)
+    import Data.Time(Day, formatTime, defaultTimeLocale)
     import Data.Time.Clock(getCurrentTime, utctDay)
     import Data.Time.Format (parseTimeM, defaultTimeLocale)
     import Data.Aeson 
@@ -475,9 +475,32 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         cs <- obtenerCosechas "cosechas.json"
         let listaActualizada = cs ++ [cosecha]
         guardarCosechas listaActualizada
-{-
-    crearCosecha :: Int -> Int -> [Trabajador] -> Day -> Day -> Double -> IO()
-    crearCosecha identificadorCosecha identificadorParcela ts fechaInicio fechaFinal cantidadEsperada = do
-        let nuevaCosecha = (Cosecha identificadorCosecha identificadorParcela ts fechaInicio fechaFinal cantidadEsperada 0 True)
-        agregarCosechaJSON nuevaCosecha
--}
+
+
+    mostrarCosechas :: [Cosecha] -> IO ()
+    mostrarCosechas cosechas = do
+        putStrLn encabezado
+        putStrLn lineaSeparadora
+        mapM_ imprimirFila cosechas
+        where
+            encabezado = printf "%-5s | %-10s | %-10s | %-12s | %-12s | %-10s | %-10s | %-10s | %-6s"
+                        "ID" "Parcela" "Trabaj." "Inicio" "Final" "Esperada" "Obtenida" "Vegetal" "Activa"
+            lineaSeparadora = replicate 100 '-'
+            imprimirFila (Cosecha idCosecha idParcela trabajadores fInicio fFinal esperada obtenida vegetal estado) =
+                printf "%-5d | %-10d | %-10d | %-12s | %-12s | %-10.2f | %-10.2f | %-10s | %-6s\n"
+                    idCosecha
+                    idParcela
+                    (length trabajadores)
+                    (formatearFecha fInicio)
+                    (formatearFecha fFinal)
+                    esperada
+                    obtenida
+                    vegetal
+                    (if estado then "Sí" else "No")
+
+            formatearFecha = formatTime defaultTimeLocale "%Y-%m-%d"
+    
+    mostrarCosechasUSER :: IO()
+    mostrarCosechasUSER = do
+        cs <- obtenerCosechas "cosechas.json"
+        mostrarCosechas cs

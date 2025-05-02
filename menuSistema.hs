@@ -129,7 +129,7 @@ module MenuSistema where
         putStrLn("-----Menu general-----")
         putStrLn("1- Gestion de cosechas")
         putStrLn("2- Cierre de cosecha")
-        putStrLn("3- Consulta de cosecha")
+        putStrLn("3- Menu consulta de cosecha")
         putStrLn("4- Cancelacion  o modificacion de cosechas")
         putStrLn("5- Consulta disponibilidad de parcela")
         putStrLn("6- Regresar")
@@ -139,11 +139,30 @@ module MenuSistema where
             "1" -> do
                 obtenerDatosCosecha
                 menuGeneral
+            "3" -> menuConsultaCosecha
             "6" -> menuPrincipal
             _ -> do
                 putStrLn("Error, comando incorrecto")
                 menuGeneral
-
+    menuConsultaCosecha :: IO()
+    menuConsultaCosecha = do
+        putStrLn("------Menu Consulta Cosecha------")
+        putStrLn("1 - Mostrar todas las cosechas")
+        putStrLn("2 - Buscar cosecha por codigo de Cosecha")
+        putStrLn("3 - Regresar")
+        putStrLn("Elige una opcion")
+        opcion <- getLine
+        case opcion of
+            "1" -> do
+                mostrarCosechasUSER
+                menuGeneral
+            "2" -> do
+                putStrLn("Desarrollando...")
+                menuConsultaCosecha
+            "3" -> menuGeneral
+            _ -> do
+                putStrLn("Error, comando incorrecto")
+                menuConsultaCosecha
     opcionesCancelacionModificacion :: IO()
     opcionesCancelacionModificacion = do
         putStrLn("1- Modificar cosecha")
