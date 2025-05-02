@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha, clearConsole) where
+    import System.Process
     import Text.Printf (printf)
     import Text.Read(readMaybe)
     import GHC.Generics (Generic)
@@ -66,6 +67,11 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
     instance FromJSON Cosecha
     instance ToJSON Cosecha
+
+    clearConsole :: IO ()
+    clearConsole = do
+        _ <- system "cls"  -- Ejecuta el comando 'cls' en la consola de Windows
+        return ()
 
 --TODA ESTA ZONA ES DE TRABAJADORES Y HERRAMIENTAS
 {----------------------------------------------------------------------------}
@@ -319,8 +325,8 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         putStrLn $ "Zona: " ++ zona
         putStrLn $ "Área (m²): " ++ show area
         putStrLn $ "Tipo de vegetal: " ++ vegetal
-        putStrLn $ "Total recaudado (en colones): "++ show totalVenta
-        putStrLn $ "Total cosechado(En Kg): "++show totalCosechado
+        printf "Total recaudado (en colones): %.2f\n" totalVenta
+        printf "Total cosechado (en Kg): %.2f\n" totalCosechado
         printf "Precio por Kg: %.2f\n" precio
         putStrLn "Herramientas asociadas:"
         if null herramientas
@@ -550,5 +556,73 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     
     mostrarCosechasUSER :: IO()
     mostrarCosechasUSER = do
+
         cs <- obtenerCosechas "cosechas.json"
         mostrarCosechas cs
+    
+{-------------------------}
+-- De AQUÍ EN ADELANTE TRABAJAREMOS CON CIERRE DE COSECHAS.
+    actualizarParcela :: Int -> Double -> Parcela -> Parcela
+    actualizarParcela idParcela cantidad parcela
+        | codigoParcela parcela == idParcela =
+            let ingreso = cantidad * precioPorKilo parcela
+            in parcela {
+                historialVenta = historialVenta parcela + ingreso,
+                volumenCosecha = volumenCosecha parcela + cantidad
+            }
+        | otherwise = parcela
+    
+    
+    pedirCantidadRecolectada :: IO Double
+    pedirCantidadRecolectada = do
+        input <- getLine
+        case readMaybe input of
+            Just precio -> return precio
+            Nothing -> do
+                putStrLn "Entrada inválida. Intenta de nuevo."
+                return 0.0001
+
+    actualizarCosecha :: Int -> Double -> Cosecha -> Cosecha
+    actualizarCosecha codigo nuevaCantidad cosecha
+        | identificadorCosecha cosecha == codigo =
+            cosecha { produccionObtenida = nuevaCantidad, estadoCosecha = False }
+        | otherwise = cosecha
+
+    obtenerCodigoParcelaPorCosecha :: Int -> [Cosecha] -> Maybe Int
+    obtenerCodigoParcelaPorCosecha idCosecha cosechas =
+        idParcelaCosecha <$> find (\c -> identificadorCosecha c == idCosecha) cosechas
+
+    actualizarDatosEnCosechaYParcela :: Int -> Double -> IO Bool
+    actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada = do
+        cs <- obtenerCosechas "cosechas.json"
+        ps <- leerParcelas "parcelas.json"
+        let resultado = obtenerCodigoParcelaPorCosecha codigoCosecha cs
+        case resultado of
+            Just codigoParcela -> do
+                let cosechasActualizadas = map(actualizarCosecha codigoCosecha cantidadRecolectada) cs
+                let parcelasActualizadas = map(actualizarParcela codigoParcela cantidadRecolectada) ps
+                guardarCosechas cosechasActualizadas
+                guardarParcelas "parcelas.json" parcelasActualizadas
+                return True
+            Nothing -> return False
+
+
+    pedirCodigoCosecha :: IO()
+    pedirCodigoCosecha = do
+        putStrLn ("Ingrese el codigo (ID) de la cosecha que desea cerrar")
+        codigoStr <- getLine
+        putStrLn("Indique la cantidad recolectada en Kg")
+        cantidadRecolectada <- pedirCantidadRecolectada
+        let codigoCosechaMaybe = convertirAEntero codigoStr
+        if cantidadRecolectada == 0.0001
+            then
+                putStrLn("Regresando al menú principal...")
+            else
+                case codigoCosechaMaybe of
+                    Just codigoCosecha -> do
+                        guardado <-actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada
+                        if guardado 
+                            then putStrLn("Cosecha cerrada, datos actualizados....")
+                            else putStrLn("Cosecha no cerrada, datos no guardados, verifique de nuevo")
+                    Nothing -> do
+                        putStrLn("Formato de número inválido")

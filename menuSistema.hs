@@ -11,10 +11,17 @@ module MenuSistema where
         putStrLn("Elige una opción porfavor")
         opcion <- getLine
         case opcion of
-            "1" -> menuOperacional
-            "2" -> menuGeneral
-            "3" -> putStrLn("Nos vemos!")
+            "1" -> do
+                clearConsole 
+                menuOperacional
+            "2" -> do
+                clearConsole 
+                menuGeneral
+            "3" -> do
+                clearConsole
+                putStrLn("Nos vemos!")
             _ -> do 
+                clearConsole
                 putStrLn ("Error, comando erroneo")
                 menuPrincipal
 
@@ -31,12 +38,21 @@ module MenuSistema where
         putStrLn("Elige una opción porfavor")
         opcion <- getLine
         case opcion of
-            "1" -> menuTrabajadores
-            "2" -> opcionesHerramientas
-            "3" -> registrarMostrarParcelas
-            "4" -> menuInformeCosechas
+            "1" -> do
+                clearConsole 
+                menuTrabajadores
+            "2" -> do
+                clearConsole 
+                opcionesHerramientas
+            "3" -> do
+                clearConsole
+                registrarMostrarParcelas
+            "4" -> do
+                clearConsole
+                menuInformeCosechas
             "5" -> menuPrincipal
             _ -> do
+                clearConsole
                 putStrLn("Error, comando incorrecto")
                 menuOperacional
 {-----------------------------------------------------------}
@@ -58,6 +74,7 @@ module MenuSistema where
                 menuTrabajadores
             "3" -> menuOperacional
             _ -> do
+                clearConsole
                 putStrLn("Error, comando incorrecto")
                 menuTrabajadores
 
@@ -78,11 +95,15 @@ module MenuSistema where
                     opcionesHerramientas
 
             "2" -> do
+                    clearConsole
                     mostrarHerramientasUSER "herramientas.json"
                     putStrLn ("Finalizado con éxito...")
                     opcionesHerramientas
-            "3" -> menuOperacional
+            "3" -> do
+                clearConsole
+                menuOperacional
             _ -> do
+                clearConsole
                 putStrLn("Error comando incorrecto")
                 opcionesHerramientas
 {-----------------------------------------------------------------}
@@ -101,7 +122,9 @@ module MenuSistema where
             "2" -> do
                 agregarParcela
                 registrarMostrarParcelas
-            "3" -> menuOperacional
+            "3" -> do
+                clearConsole 
+                menuOperacional
             _ -> do
                 putStrLn("Error, comando incorrecto")
                 registrarMostrarParcelas
@@ -139,9 +162,15 @@ module MenuSistema where
             "1" -> do
                 obtenerDatosCosecha
                 menuGeneral
+            "2" -> do
+                pedirCodigoCosecha
+                menuGeneral
             "3" -> menuConsultaCosecha
-            "6" -> menuPrincipal
+            "6" -> do
+                clearConsole 
+                menuPrincipal
             _ -> do
+                clearConsole
                 putStrLn("Error, comando incorrecto")
                 menuGeneral
     menuConsultaCosecha :: IO()
