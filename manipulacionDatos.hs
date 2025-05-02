@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER) where
     import Text.Printf (printf)
     import Text.Read(readMaybe)
     import GHC.Generics (Generic)
@@ -476,6 +476,38 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         let listaActualizada = cs ++ [cosecha]
         guardarCosechas listaActualizada
 
+    mostrarCosechaSola :: Cosecha -> IO ()
+    mostrarCosechaSola cosecha@(Cosecha idCosecha idParcela trabajadores fInicio fFinal esperada obtenida vegetal estado) = do
+        putStrLn encabezado
+        putStrLn lineaSeparadora
+        imprimirFila cosecha
+        putStrLn "\nTrabajadores asignados:"
+        putStrLn trabajadoresEncabezado
+        putStrLn trabajadoresLinea
+        mapM_ imprimirTrabajador trabajadores
+        where
+            encabezado = printf "%-5s | %-10s | %-10s | %-12s | %-12s | %-10s | %-10s | %-10s | %-6s"
+                    "ID" "Parcela" "Trabaj." "Inicio" "Final" "Esperada" "Obtenida" "Vegetal" "Activa"
+            lineaSeparadora = replicate 100 '-' 
+            formatearFecha = formatTime defaultTimeLocale "%Y-%m-%d"
+
+            imprimirFila (Cosecha idCosecha idParcela trabajadores fInicio fFinal esperada obtenida vegetal estado) =
+                printf "%-5d | %-10d | %-10d | %-12s | %-12s | %-10.2f | %-10.2f | %-10s | %-6s\n"
+                idCosecha
+                idParcela
+                (length trabajadores)
+                (formatearFecha fInicio)
+                (formatearFecha fFinal)
+                esperada
+                obtenida
+                vegetal
+                (if estado then "Sí" else "No")
+
+            trabajadoresEncabezado = printf "%-15s | %-20s" "Nombre" "Rol"
+            trabajadoresLinea = replicate 40 '-'
+
+            imprimirTrabajador (Trabajador _ nombre rol _) =
+                printf "%-15s | %-20s\n" nombre rol
 
     mostrarCosechas :: [Cosecha] -> IO ()
     mostrarCosechas cosechas = do
@@ -499,6 +531,22 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                     (if estado then "Sí" else "No")
 
             formatearFecha = formatTime defaultTimeLocale "%Y-%m-%d"
+    
+    buscarCosechaPorId :: Int -> [Cosecha] -> Maybe Cosecha
+    buscarCosechaPorId idBuscado cosechas =
+        find (\c -> identificadorCosecha c == idBuscado) cosechas
+    
+    mostrarCosechaSolaUSER :: String -> IO ()
+    mostrarCosechaSolaUSER codCosechaStr = do
+        cs <- obtenerCosechas "cosechas.json"
+        let codCosechaMaybe = convertirAEntero codCosechaStr
+        case codCosechaMaybe of
+            Just codCosecha -> do
+                let cosechaImprimirMaybe = buscarCosechaPorId codCosecha cs
+                case cosechaImprimirMaybe of
+                    Just cosechaImprimir -> mostrarCosechaSola cosechaImprimir
+                    Nothing -> putStrLn "Cosecha no encontrada..."
+            Nothing -> putStrLn "Formato de número erróneo..."
     
     mostrarCosechasUSER :: IO()
     mostrarCosechasUSER = do

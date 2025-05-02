@@ -157,7 +157,9 @@ module MenuSistema where
                 mostrarCosechasUSER
                 menuGeneral
             "2" -> do
-                putStrLn("Desarrollando...")
+                putStrLn("Ingrese el número de cosecha que quiere imprimir")
+                numCosecha <- getLine
+                mostrarCosechaSolaUSER numCosecha
                 menuConsultaCosecha
             "3" -> menuGeneral
             _ -> do
