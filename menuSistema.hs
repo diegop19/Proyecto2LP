@@ -206,6 +206,8 @@ module MenuSistema where
         opcion <- getLine
         case opcion of
             "1" -> do
+                clearConsole
+                modificarCosecha
                 opcionesCancelacionModificacion
             "2" -> do
                 clearConsole
