@@ -46,12 +46,12 @@ getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: 
 
 
 bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath
-bindir     = "C:\\Users\\Diego\\Documents\\Proyecto2LP\\.stack-work\\install\\cacc674a\\bin"
-libdir     = "C:\\Users\\Diego\\Documents\\Proyecto2LP\\.stack-work\\install\\cacc674a\\lib\\x86_64-windows-ghc-9.8.4\\proyecto2-0.1.0.0-DJyml4fqOrSBi9rGn24yor-proyecto2"
-dynlibdir  = "C:\\Users\\Diego\\Documents\\Proyecto2LP\\.stack-work\\install\\cacc674a\\lib\\x86_64-windows-ghc-9.8.4"
-datadir    = "C:\\Users\\Diego\\Documents\\Proyecto2LP\\.stack-work\\install\\cacc674a\\share\\x86_64-windows-ghc-9.8.4\\proyecto2-0.1.0.0"
-libexecdir = "C:\\Users\\Diego\\Documents\\Proyecto2LP\\.stack-work\\install\\cacc674a\\libexec\\x86_64-windows-ghc-9.8.4\\proyecto2-0.1.0.0"
-sysconfdir = "C:\\Users\\Diego\\Documents\\Proyecto2LP\\.stack-work\\install\\cacc674a\\etc"
+bindir     = "C:\\Users\\chedr\\OneDrive\\Desktop\\Materias de la U\\Lenguajes de programaci\243n\\Proyecto2LP\\.stack-work\\install\\1387d796\\bin"
+libdir     = "C:\\Users\\chedr\\OneDrive\\Desktop\\Materias de la U\\Lenguajes de programaci\243n\\Proyecto2LP\\.stack-work\\install\\1387d796\\lib\\x86_64-windows-ghc-9.8.4\\proyecto2-0.1.0.0-DJyml4fqOrSBi9rGn24yor-proyecto2"
+dynlibdir  = "C:\\Users\\chedr\\OneDrive\\Desktop\\Materias de la U\\Lenguajes de programaci\243n\\Proyecto2LP\\.stack-work\\install\\1387d796\\lib\\x86_64-windows-ghc-9.8.4"
+datadir    = "C:\\Users\\chedr\\OneDrive\\Desktop\\Materias de la U\\Lenguajes de programaci\243n\\Proyecto2LP\\.stack-work\\install\\1387d796\\share\\x86_64-windows-ghc-9.8.4\\proyecto2-0.1.0.0"
+libexecdir = "C:\\Users\\chedr\\OneDrive\\Desktop\\Materias de la U\\Lenguajes de programaci\243n\\Proyecto2LP\\.stack-work\\install\\1387d796\\libexec\\x86_64-windows-ghc-9.8.4\\proyecto2-0.1.0.0"
+sysconfdir = "C:\\Users\\chedr\\OneDrive\\Desktop\\Materias de la U\\Lenguajes de programaci\243n\\Proyecto2LP\\.stack-work\\install\\1387d796\\etc"
 
 getBinDir     = catchIO (getEnv "proyecto2_bindir")     (\_ -> return bindir)
 getLibDir     = catchIO (getEnv "proyecto2_libdir")     (\_ -> return libdir)

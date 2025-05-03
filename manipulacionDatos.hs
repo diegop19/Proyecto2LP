@@ -37,13 +37,19 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     instance FromJSON Trabajador
     instance ToJSON Trabajador
 
+    data Vegetal = Vegetal {
+          tipoVegetal :: String
+        , precioPorKilo :: Double
+    }deriving (Show, Generic)
+    instance FromJSON Vegetal
+    instance ToJSON Vegetal
+
     data Parcela = Parcela {
           codigoParcela :: Int
         , nombreParcela :: String
         , zona :: String
         , areaEnMetrosCuadrados :: Int
-        , tipoVegetal :: String
-        , precioPorKilo :: Double
+        , vegetales :: [Vegetal]
         , herramientas :: [Herramienta]
         , historialVenta :: Double
         , volumenCosecha :: Double
@@ -270,8 +276,8 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 crearArchivoJSON archivo
                 BL.writeFile archivo (encode parcelas)
 
-    crearParcela :: String -> String -> String -> Double -> [Herramienta] -> Int -> IO ()
-    crearParcela nombreParcela zonaParcela tipoVegetal precioPorKilo listaHerramientas areaEnMetrosCuadrados = do
+    crearParcela :: String -> String -> [Vegetal] -> [Herramienta] -> Int -> IO ()
+    crearParcela nombreParcela zonaParcela listaVegetales listaHerramientas areaEnMetrosCuadrados = do
         existe <- validarExistencia "parcelas.json"
         if not existe
             then crearArchivoJSON "parcelas.json"
@@ -279,10 +285,32 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
         listaParcelas <- leerParcelas "parcelas.json"
         id <- obtenerNuevoIdParcela "parcelas.json"
-
-        let nuevaParcela = Parcela id nombreParcela zonaParcela areaEnMetrosCuadrados tipoVegetal precioPorKilo listaHerramientas 0 0
+        let nuevaParcela = Parcela {
+            codigoParcela = id,
+            nombreParcela = nombreParcela,
+            zona = zonaParcela,
+            areaEnMetrosCuadrados = areaEnMetrosCuadrados,
+            vegetales = listaVegetales,
+            herramientas = listaHerramientas,
+            historialVenta = 0,
+            volumenCosecha = 0
+        }
         let parcelasActualizadas = listaParcelas ++ [nuevaParcela]
         guardarParcelas "parcelas.json" parcelasActualizadas
+        putStrLn("Parcela guardada exitosamente")
+
+    pedirVegetales :: [Vegetal] -> IO [Vegetal]
+    pedirVegetales acumulados = do
+        putStrLn "Ingrese el nombre del vegetal (o escriba 'fin' para terminar):"
+        nombre <- getLine
+        if nombre == "fin"
+            then return acumulados
+            else do
+                putStrLn "Ingrese el precio por kilo del vegetal:"
+                precioStr <- getLine
+                let precio = read precioStr :: Double
+                let vegetal = Vegetal nombre precio
+                pedirVegetales (acumulados ++ [vegetal])
 
     agregarParcela :: IO()
     agregarParcela = do
@@ -291,9 +319,10 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         putStrLn("Escriba la zona de la parcela.")
         zona <- getLine
         area <- pedirArea
-        putStrLn("Escriba el tipo de vegetal de esta parcela.")
-        tipoVegetal <- getLine
-        precio <- pedirPrecio
+
+        putStrLn("Ingrese los vegetales de la parcela: ")
+        vegetales <- pedirVegetales []
+
         mostrarHerramientasUSER "herramientas.json"
         putStrLn("Ingrese el código de las herramientas que quiere agregar separados por comas. \n (Los datos erróneos no serán agregados)")
         listaCodigos <- getLine
@@ -304,7 +333,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             putStrLn("Debes agregar al menos una herramienta para la parcela")
             agregarParcela
         else
-            crearParcela nombre zona tipoVegetal precio herramientasParcela area
+            crearParcela nombre zona vegetales herramientasParcela area
 
     mostrarParcelasUSER :: IO()
     mostrarParcelasUSER = do
@@ -318,16 +347,22 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         then putStrLn "No hay parcelas registradas."
         else mapM_ imprimirParcela parcelas
 
+    imprimirVegetal :: Vegetal -> IO ()
+    imprimirVegetal (Vegetal tipo precio) = do
+        putStrLn $ "  Tipo: " ++ tipo ++ ", Precio por Kg: " ++ show precio
+
     imprimirParcela :: Parcela -> IO ()
-    imprimirParcela (Parcela id nombre zona area vegetal precio herramientas totalVenta totalCosechado) = do
+    imprimirParcela (Parcela id nombre zona area vegetales herramientas totalVenta totalCosechado) = do
         putStrLn $ "ID DE LA PARCELA " ++ show id
         putStrLn $ "Nombre de la parcela: " ++ nombre
         putStrLn $ "Zona: " ++ zona
         putStrLn $ "Área (m²): " ++ show area
-        putStrLn $ "Tipo de vegetal: " ++ vegetal
+        putStrLn "Vegetales cultivados:"
+        if null vegetales
+            then putStrLn "  No hay vegetales asociados."
+            else mapM_ imprimirVegetal vegetales
         printf "Total recaudado (en colones): %.2f\n" totalVenta
         printf "Total cosechado (en Kg): %.2f\n" totalCosechado
-        printf "Precio por Kg: %.2f\n" precio
         putStrLn "Herramientas asociadas:"
         if null herramientas
         then putStrLn "  No hay herramientas asociadas."
@@ -398,7 +433,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         fechaInicio <- pedirFechaValida
         putStrLn ("Ingrese la fecha de finalizacion de la cosecha (Año-Mes-Día)")
         fechaFinal <- pedirFechaValida
-        putStrLn("Ingrese el vegetal a cosechar (debe de coincidir con el vegetal de la parcela elegida)")
+        putStrLn("Ingrese el vegetal a cosechar (debe de coincidir con uno de los vegetales de la parcela elegida)")
         vegetal <- getLine
         ts <- obtenerTrabajadores "trabajadores.json" 
         mostrarListaTrabajadores ts
@@ -441,8 +476,9 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     verificarTipoVegetal :: String -> Int -> [Parcela] -> Bool
     verificarTipoVegetal vegetal codigoP parcelas =
         case find (\p -> codigoParcela p == codigoP) parcelas of
-            Just parcela -> tipoVegetal parcela == vegetal
+            Just parcela -> any (\v -> tipoVegetal v == vegetal) (vegetales parcela)
             Nothing -> False
+
 
     validarDisponibilidad :: Cosecha -> [Cosecha] -> Bool
     validarDisponibilidad cosechaNueva cosechas =
@@ -562,14 +598,23 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     
 {-------------------------}
 -- De AQUÍ EN ADELANTE TRABAJAREMOS CON CIERRE DE COSECHAS.
-    actualizarParcela :: Int -> Double -> Parcela -> Parcela
-    actualizarParcela idParcela cantidad parcela
+
+    obtenerVegetalesDeParcela :: Parcela -> [Vegetal]
+    obtenerVegetalesDeParcela parcela = vegetales parcela
+    
+    actualizarParcela :: Int -> String -> Double -> Parcela -> Parcela
+    actualizarParcela idParcela vegetal cantidad parcela
         | codigoParcela parcela == idParcela =
-            let ingreso = cantidad * precioPorKilo parcela
-            in parcela {
-                historialVenta = historialVenta parcela + ingreso,
-                volumenCosecha = volumenCosecha parcela + cantidad
-            }
+            let 
+                vegetalCorrespondiente = find (\v -> tipoVegetal v == vegetal) (obtenerVegetalesDeParcela parcela)
+            in case vegetalCorrespondiente of
+                Just v -> 
+                    let ingreso = cantidad * precioPorKilo v
+                    in parcela {
+                        historialVenta = historialVenta parcela + ingreso,
+                        volumenCosecha = volumenCosecha parcela + cantidad
+                    }
+                Nothing -> parcela 
         | otherwise = parcela
     
     
@@ -582,25 +627,25 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 putStrLn "Entrada inválida. Intenta de nuevo."
                 return 0.0001
 
-    actualizarCosecha :: Int -> Double -> Cosecha -> Cosecha
-    actualizarCosecha codigo nuevaCantidad cosecha
+    actualizarCosecha :: Int -> Double -> String -> Cosecha -> Cosecha
+    actualizarCosecha codigo nuevaCantidad vegetal cosecha
         | identificadorCosecha cosecha == codigo =
-            cosecha { produccionObtenida = nuevaCantidad, estadoCosecha = False }
+            cosecha { produccionObtenida = nuevaCantidad, estadoCosecha = False}
         | otherwise = cosecha
 
     obtenerCodigoParcelaPorCosecha :: Int -> [Cosecha] -> Maybe Int
     obtenerCodigoParcelaPorCosecha idCosecha cosechas =
         idParcelaCosecha <$> find (\c -> identificadorCosecha c == idCosecha) cosechas
 
-    actualizarDatosEnCosechaYParcela :: Int -> Double -> IO Bool
-    actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada = do
+    actualizarDatosEnCosechaYParcela :: Int -> Double -> String -> IO Bool
+    actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada vegetalCosechado = do
         cs <- obtenerCosechas "cosechas.json"
         ps <- leerParcelas "parcelas.json"
         let resultado = obtenerCodigoParcelaPorCosecha codigoCosecha cs
         case resultado of
             Just codigoParcela -> do
-                let cosechasActualizadas = map(actualizarCosecha codigoCosecha cantidadRecolectada) cs
-                let parcelasActualizadas = map(actualizarParcela codigoParcela cantidadRecolectada) ps
+                let cosechasActualizadas = map(actualizarCosecha codigoCosecha cantidadRecolectada vegetalCosechado) cs
+                let parcelasActualizadas = map(actualizarParcela codigoParcela vegetalCosechado cantidadRecolectada) ps
                 guardarCosechas cosechasActualizadas
                 guardarParcelas "parcelas.json" parcelasActualizadas
                 return True
@@ -620,12 +665,17 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             else
                 case codigoCosechaMaybe of
                     Just codigoCosecha -> do
-                        guardado <-actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada
-                        if guardado 
-                            then putStrLn("Cosecha cerrada, datos actualizados....")
-                            else putStrLn("Cosecha no cerrada, datos no guardados, verifique de nuevo")
-                    Nothing -> do
-                        putStrLn("Formato de número inválido")
+                        cs <- obtenerCosechas "cosechas.json"
+                        let cosechaEncontrada = find (\c -> identificadorCosecha c == codigoCosecha) cs
+                        case cosechaEncontrada of
+                            Just cosecha -> do
+                                let vegetal = tipoVegetalCosecha cosecha
+                                guardado <- actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada vegetal
+                                if guardado 
+                                    then putStrLn "Cosecha cerrada, datos actualizados...."
+                                    else putStrLn "Cosecha no cerrada, datos no guardados, verifique de nuevo"
+                            Nothing -> putStrLn "Cosecha no encontrada."
+                    Nothing -> putStrLn "Formato de número inválido"
 
 {------------------------------------------------------------------------}
 -- CANCELACION DE COSECHAS 
