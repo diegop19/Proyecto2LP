@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha, clearConsole) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha,cancelarCosechaUSER , clearConsole) where
     import System.Process
     import Text.Printf (printf)
     import Text.Read(readMaybe)
@@ -626,3 +626,32 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                             else putStrLn("Cosecha no cerrada, datos no guardados, verifique de nuevo")
                     Nothing -> do
                         putStrLn("Formato de número inválido")
+
+{------------------------------------------------------------------------}
+-- CANCELACION DE COSECHAS 
+
+    cancelarCosecha :: Int -> IO Bool
+    cancelarCosecha idCosecha = do
+        cosechas <- obtenerCosechas "cosechas.json"
+        case find (\c -> identificadorCosecha c == idCosecha && estadoCosecha c) cosechas of
+            Nothing -> return False  -- O no encontro la cosecha o ya esta cerrada
+            Just _ -> do
+                let nuevasCosechas = filter (\c -> identificadorCosecha c /= idCosecha) cosechas
+                guardarCosechas nuevasCosechas
+                return True
+
+
+    cancelarCosechaUSER   :: IO ()
+    cancelarCosechaUSER   = do
+        putStrLn "Ingrese el ID de la cosecha a cancelar:"
+        input <- getLine
+        case readMaybe input of
+            Nothing -> do
+                putStrLn "ID inválido. Debe ser un número."
+                cancelarCosechaUSER  
+            Just idC -> do
+                resultado <- cancelarCosecha idC
+                if resultado
+                    then putStrLn $ "Cosecha #" ++ show idC ++ " cancelada exitosamente."
+                    else putStrLn $ "No se pudo cancelar la cosecha #" ++ show idC ++ 
+                                ". Verifique que existe y no está cerrada."

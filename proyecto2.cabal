@@ -21,6 +21,7 @@ executable proyecto2
                        bytestring,
                        directory,
                        split,
-                       time
+                       time,
+                       process
 
   ghc-options:         -Wall

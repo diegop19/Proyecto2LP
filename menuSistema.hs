@@ -166,6 +166,7 @@ module MenuSistema where
                 pedirCodigoCosecha
                 menuGeneral
             "3" -> menuConsultaCosecha
+            "4" -> opcionesCancelacionModificacion
             "6" -> do
                 clearConsole 
                 menuPrincipal
@@ -194,12 +195,27 @@ module MenuSistema where
             _ -> do
                 putStrLn("Error, comando incorrecto")
                 menuConsultaCosecha
+
     opcionesCancelacionModificacion :: IO()
     opcionesCancelacionModificacion = do
+        putStrLn("--------- Cancelar/Modificar Cosecha --------")
         putStrLn("1- Modificar cosecha")
         putStrLn("2- Cancelar cosecha")
         putStrLn("3- Regresar")
-        putStrLn("Elige una opción porfavor")
+        putStrLn("Elige una opción por favor")
+        opcion <- getLine
+        case opcion of
+            "1" -> do
+                opcionesCancelacionModificacion
+            "2" -> do
+                clearConsole
+                mostrarCosechasUSER  
+                cancelarCosechaUSER
+                opcionesCancelacionModificacion
+            "3" -> menuGeneral
+            _ -> do
+                putStrLn "Opción inválida"
+                opcionesCancelacionModificacion
     
     opcionesConsultaDisponibilidad :: IO()
     opcionesConsultaDisponibilidad = do
