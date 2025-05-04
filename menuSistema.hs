@@ -146,34 +146,90 @@ module MenuSistema where
                 putStrLn("Error, comando incorrecto")
                 menuInformeCosechas
 
-
     menuGeneral :: IO()
     menuGeneral = do
-        putStrLn("-----Menu general-----")
-        putStrLn("1- Gestion de cosechas")
-        putStrLn("2- Cierre de cosecha")
-        putStrLn("3- Menu consulta de cosecha")
-        putStrLn("4- Cancelacion  o modificacion de cosechas")
-        putStrLn("5- Consulta disponibilidad de parcela")
-        putStrLn("6- Regresar")
-        putStrLn("Elige una opción porfavor")
+        putStrLn "\n----- MENÚ GENERAL -----"
+        putStrLn "1- Gestión de cosechas"
+        putStrLn "2- Cierre de cosecha"
+        putStrLn "3- Consulta de cosecha"
+        putStrLn "4- Cancelación o modificación de cosechas"
+        putStrLn "5- Consulta disponibilidad de parcela"
+        putStrLn "6- Regresar al menú principal"
+        putStr "Elige una opción: "
         opcion <- getLine
+        
         case opcion of
             "1" -> do
+                clearConsole
                 obtenerDatosCosecha
                 menuGeneral
+                
             "2" -> do
+                clearConsole
                 pedirCodigoCosecha
                 menuGeneral
-            "3" -> menuConsultaCosecha
-            "4" -> opcionesCancelacionModificacion
+                
+            "3" -> do
+                clearConsole
+                menuConsultaCosecha
+                menuGeneral
+                
+            "4" -> do
+                clearConsole
+                opcionesCancelacionModificacion
+                menuGeneral
+                
+            "5" -> do
+                clearConsole
+                menuConsultaDisponibilidad
+                menuGeneral
+                
             "6" -> do
-                clearConsole 
+                clearConsole
                 menuPrincipal
+                
             _ -> do
                 clearConsole
-                putStrLn("Error, comando incorrecto")
+                putStrLn "Error: Opción no válida"
                 menuGeneral
+
+    menuConsultaDisponibilidad :: IO()
+    menuConsultaDisponibilidad = do
+        putStrLn "\n ------ Consulta de Disponibilidad ------"
+        putStrLn "1- Ver parcelas disponibles en un rango de fechas"
+        putStrLn "2- Ver disponibilidad diaria por parcela"
+        putStrLn "3- Volver al menú general"
+        putStr "Seleccione una opción: "
+        opcion <- getLine
+        
+        case opcion of
+            "1" -> do
+                clearConsole
+                putStrLn "\nIngrese fecha de inicio (AAAA-MM-DD):"
+                inicio <- pedirFechaValida
+                putStrLn "Ingrese fecha de fin (AAAA-MM-DD):"
+                fin <- pedirFechaValida
+                consultarDisponibilidadBasica inicio fin
+                menuConsultaDisponibilidad
+                
+            "2" -> do
+                clearConsole
+                putStrLn "\nIngrese fecha de inicio (AAAA-MM-DD):"
+                inicio <- pedirFechaValida
+                putStrLn "Ingrese fecha de fin (AAAA-MM-DD):"
+                fin <- pedirFechaValida
+                consultarDisponibilidadDetallada inicio fin
+                menuConsultaDisponibilidad
+                
+            "3" -> do
+                clearConsole
+                return ()
+                
+            _ -> do
+                clearConsole
+                putStrLn "Error: Opción no válida"
+                menuConsultaDisponibilidad
+
     menuConsultaCosecha :: IO()
     menuConsultaCosecha = do
         putStrLn("------Menu Consulta Cosecha------")

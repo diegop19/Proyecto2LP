@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha,cancelarCosechaUSER ,modificarCosecha,modificarFechasCosecha,modificarParcelaCosecha,modificarVegetalCosecha,clearConsole) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha,cancelarCosechaUSER ,modificarCosecha,modificarFechasCosecha,modificarParcelaCosecha,modificarVegetalCosecha,consultarDisponibilidadBasica,consultarDisponibilidadDetallada,pedirFechaValida,clearConsole) where
     import System.Process
     import Text.Printf (printf)
     import Text.Read(readMaybe)
@@ -15,6 +15,9 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     import Data.List (maximumBy)
     import Data.List (nubBy)
     import Data.List (find)
+    import Data.Time (Day, formatTime, defaultTimeLocale, addDays)  -- Añadir addDays aquí
+    import Data.Time.Clock (getCurrentTime, utctDay)
+    import Data.Time.Format (parseTimeM, defaultTimeLocale)
     import qualified Data.ByteString.Lazy.Char8 as BL
 
     data Herramienta = Herramienta {   
@@ -372,6 +375,74 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     imprimirHerramienta :: Herramienta -> IO ()
     imprimirHerramienta (Herramienta codigo nombre descripcion tipo) = do
         printf "  Código: %s, Nombre: %s, Descripción: %s, Tipo: %s\n" codigo nombre descripcion tipo
+
+{-------------------------------------------------------------------------------------------}
+--- Consulta de disponiilidad de parcelas 
+
+    choqueFechas :: Day -> Day -> Day -> Day -> Bool
+    choqueFechas inicio1 fin1 inicio2 fin2 =
+        not (fin1 < inicio2 || inicio1 > fin2)
+
+    parcelaDisponibleEnRango :: Int -> Day -> Day -> [Cosecha] -> Bool
+    parcelaDisponibleEnRango idParcela inicio fin cosechas =
+        all (\c -> not (choqueFechas inicio fin (fechaInicio c) (fechaFinal c))) $
+        filter (\c -> idParcelaCosecha c == idParcela && estadoCosecha c) cosechas
+
+    generarRangoDias :: Day -> Day -> [Day]
+    generarRangoDias inicio fin 
+        | inicio > fin = []
+        | otherwise = inicio : generarRangoDias (addDays 1 inicio) fin
+
+    consultarDisponibilidadBasica :: Day -> Day -> IO ()
+    consultarDisponibilidadBasica inicio fin = do
+        parcelas <- leerParcelas "parcelas.json"
+        cosechas <- obtenerCosechas "cosechas.json"
+        
+        let parcelasDisponibles = filter (\p -> 
+                parcelaDisponibleEnRango (codigoParcela p) inicio fin cosechas) parcelas
+        
+        putStrLn "\n=== PARCELAS DISPONIBLES ==="
+        putStrLn $ "Desde: " ++ show inicio ++ " Hasta: " ++ show fin
+        
+        if null parcelasDisponibles
+            then putStrLn "No hay parcelas disponibles en este rango."
+            else mapM_ mostrarInfoParcelaSimple parcelasDisponibles
+        where
+            mostrarInfoParcelaSimple p = 
+                putStrLn $ "ID: " ++ show (codigoParcela p) ++ 
+                        " - Nombre: " ++ nombreParcela p ++ 
+                        " - Zona: " ++ zona p
+
+    parcelaDisponibleEnDia :: Int -> Day -> [Cosecha] -> Bool
+    parcelaDisponibleEnDia idParcela dia cosechas =
+        not (any (\c -> idParcelaCosecha c == idParcela && 
+                        estadoCosecha c &&
+                        dia >= fechaInicio c && 
+                        dia <= fechaFinal c) cosechas)
+
+    consultarDisponibilidadDetallada :: Day -> Day -> IO ()
+    consultarDisponibilidadDetallada inicio fin = do
+        parcelas <- leerParcelas "parcelas.json"
+        cosechas <- obtenerCosechas "cosechas.json"
+        let rangoDias = generarRangoDias inicio fin
+        
+        putStrLn "\n=== DISPONIBILIDAD DETALLADA ==="
+        putStrLn $ "Rango: " ++ show inicio ++ " a " ++ show fin
+        
+        mapM_ (mostrarDisponibilidadParcela cosechas rangoDias) parcelas
+        where
+            mostrarDisponibilidadParcela cosechas dias parcela = do
+                putStrLn $ "\nParcela ID: " ++ show (codigoParcela parcela) ++ 
+                        " - Nombre: " ++ nombreParcela parcela
+                putStrLn $ replicate 40 '-'
+                
+                mapM_ (mostrarEstadoDia (codigoParcela parcela) cosechas) dias
+            
+            mostrarEstadoDia idParcela cosechas dia = do
+                let disponible = parcelaDisponibleEnDia idParcela dia cosechas
+                putStrLn $ show dia ++ ": " ++ 
+                        if disponible then "Disponible" else "Ocupada"
+
 {-------------------------------------------------------------------------------------------}
 --De aquí en adelante se trabajarán las cosechas
     validarFormatoFecha :: String -> Maybe Day
