@@ -145,17 +145,21 @@ module MenuSistema where
             "1" -> do
                 putStrLn ("---------PARCELA CON MAYOR VOLUMEN DE COSECHA--------")
                 topParcelaMayorVolumen
+                menuInformeCosechas
             "2" -> do
                 putStrLn("----------TOP 3 PARCELAS CON MAYOR VENTA----------------")
                 topTresParcelasVentas
+                menuInformeCosechas
             "3" -> do
                 putStrLn("----------TRABAJADOR CON MÁS COSECHAS---------------")
                 mostrarTrabajadorConMasCosechas
+                menuInformeCosechas
             "5" -> do
                 putStrLn("-------COSECHAS CON SOBREPRODUCCION---------\n")
                 cosechasSobreproduccion
                 putStrLn("\n-------COSECHAS CON SUBPRODUCCION------------\n")
                 cosechasSubproduccion
+                menuInformeCosechas
 
             "6" -> menuOperacional --FALTA AGREGAR LAS FUNCIONALIDADES
             _ -> do
@@ -177,22 +181,18 @@ module MenuSistema where
         case opcion of
             "1" -> do
                 clearConsole
-                obtenerDatosCosecha                
+                obtenerDatosCosecha
+                menuGeneral                
             "2" -> do
                 clearConsole
                 pedirCodigoCosecha
-
-                
+                menuGeneral
             "3" -> do
                 clearConsole
                 menuConsultaCosecha
-
-                
             "4" -> do
                 clearConsole
                 opcionesCancelacionModificacion
-
-                
             "5" -> do
                 clearConsole
                 menuConsultaDisponibilidad
