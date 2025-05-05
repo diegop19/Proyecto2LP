@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha,cancelarCosechaUSER ,modificarCosecha,modificarFechasCosecha,modificarParcelaCosecha,modificarVegetalCosecha,consultarDisponibilidadBasica,consultarDisponibilidadDetallada,pedirFechaValida,clearConsole,topTresParcelasVentas,topParcelaMayorVolumen, cosechasSobreproduccion,cosechasSubproduccion) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha,cancelarCosechaUSER ,modificarCosecha,modificarFechasCosecha,modificarParcelaCosecha,modificarVegetalCosecha,consultarDisponibilidadBasica,consultarDisponibilidadDetallada,pedirFechaValida,clearConsole,topTresParcelasVentas,topParcelaMayorVolumen, cosechasSobreproduccion,cosechasSubproduccion,mostrarTrabajadorConMasCosechas) where
     import System.Process
     import Text.Printf (printf)
     import Text.Read(readMaybe)
@@ -529,11 +529,15 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                         if vegetalCoincide 
                             then do 
                                 putStrLn("El vegetal es el correcto...")
-                                if esDisponible
-                                    then do 
-                                        putStrLn("No hay choques de horario...")
-                                        putStrLn("Guardando...")
-                                        agregarCosechaJSON nuevaCosecha
+                                if esDisponible 
+                                    then
+                                        if not (null trabajadores) && length trabajadores == 1
+                                            then do 
+                                                putStrLn("No hay choques de horario...")
+                                                putStrLn("Guardando...")
+                                                agregarCosechaJSON nuevaCosecha
+                                            else do
+                                                putStrLn("Tienes que agregar exactamente un trabajador")
                                     else do
                                         putStrLn("Hay choques de horario, verifique e intente de nuevo")
                             else do
@@ -722,6 +726,15 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 return True
             Nothing -> return False
 
+    actualizarTrabajadores :: Trabajador -> [Trabajador] -> [Trabajador]
+    actualizarTrabajadores trabajadorCosecha trabajadoresGeneral =
+        map actualizar trabajadoresGeneral
+        where
+            actualizar t
+                | cedula t == cedula trabajadorCosecha =
+                    t { cantidadCosechasTrabajadas = cantidadCosechasTrabajadas t + 1 }
+                | otherwise = t
+
 
     pedirCodigoCosecha :: IO()
     pedirCodigoCosecha = do
@@ -741,6 +754,12 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                         case cosechaEncontrada of
                             Just cosecha -> do
                                 let vegetal = tipoVegetalCosecha cosecha
+                                let trabajadoresCosecha = trabajadores cosecha
+                                let trabajadorCosecha = head trabajadoresCosecha
+                                trabajadoresGeneral <- obtenerTrabajadores "trabajadores.json"
+                                let trabajadoresActualizados = actualizarTrabajadores trabajadorCosecha trabajadoresGeneral
+                                guardarTrabajadores trabajadoresActualizados "trabajadores.json"
+
                                 guardado <- actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada vegetal
                                 if guardado 
                                     then putStrLn "Cosecha cerrada, datos actualizados...."
@@ -935,6 +954,9 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 guardarCosechas nuevasCosechas
                 putStrLn "Tipo de vegetal modificado exitosamente."
 
+{-------------------------------------------------------------------------}
+--ESTADISTICAS DEL SISTEMA
+
     parcelasOrdenadasPorVenta :: [Parcela] -> [Parcela]
     parcelasOrdenadasPorVenta = take 3 . sortBy (flip (comparing historialVenta))
 
@@ -971,3 +993,15 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         cosechas <- obtenerCosechas "cosechas.json"
         let cosechasSubProd = cosechasSubproduccionTerminadas cosechas
         mostrarCosechas cosechasSubProd
+    
+    
+
+    trabajadoresOrdenadosPorTrabajo :: [Trabajador] -> Trabajador
+    trabajadoresOrdenadosPorTrabajo = head . sortBy (flip (comparing cantidadCosechasTrabajadas))
+
+    mostrarTrabajadorConMasCosechas :: IO()
+    mostrarTrabajadorConMasCosechas = do
+        trabajadores <- obtenerTrabajadores "trabajadores.json"
+        let trabajadorMayor = trabajadoresOrdenadosPorTrabajo trabajadores
+        let mostrarTrabajador = [trabajadorMayor]
+        mostrarListaTrabajadores mostrarTrabajador

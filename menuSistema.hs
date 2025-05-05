@@ -148,6 +148,9 @@ module MenuSistema where
             "2" -> do
                 putStrLn("----------TOP 3 PARCELAS CON MAYOR VENTA----------------")
                 topTresParcelasVentas
+            "3" -> do
+                putStrLn("----------TRABAJADOR CON MÁS COSECHAS---------------")
+                mostrarTrabajadorConMasCosechas
             "5" -> do
                 putStrLn("-------COSECHAS CON SOBREPRODUCCION---------\n")
                 cosechasSobreproduccion
