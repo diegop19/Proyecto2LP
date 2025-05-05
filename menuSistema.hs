@@ -50,7 +50,8 @@ module MenuSistema where
             "4" -> do
                 clearConsole
                 menuInformeCosechas
-            "5" -> menuPrincipal
+            "5" -> do 
+                menuPrincipal
             _ -> do
                 clearConsole
                 putStrLn("Error, comando incorrecto")
@@ -141,6 +142,18 @@ module MenuSistema where
         putStrLn("Elige una opción porfavor")
         opcion <- getLine
         case opcion of
+            "1" -> do
+                putStrLn ("---------PARCELA CON MAYOR VOLUMEN DE COSECHA--------")
+                topParcelaMayorVolumen
+            "2" -> do
+                putStrLn("----------TOP 3 PARCELAS CON MAYOR VENTA----------------")
+                topTresParcelasVentas
+            "5" -> do
+                putStrLn("-------COSECHAS CON SOBREPRODUCCION---------\n")
+                cosechasSobreproduccion
+                putStrLn("\n-------COSECHAS CON SUBPRODUCCION------------\n")
+                cosechasSubproduccion
+
             "6" -> menuOperacional --FALTA AGREGAR LAS FUNCIONALIDADES
             _ -> do
                 putStrLn("Error, comando incorrecto")
@@ -161,28 +174,25 @@ module MenuSistema where
         case opcion of
             "1" -> do
                 clearConsole
-                obtenerDatosCosecha
-                menuGeneral
-                
+                obtenerDatosCosecha                
             "2" -> do
                 clearConsole
                 pedirCodigoCosecha
-                menuGeneral
+
                 
             "3" -> do
                 clearConsole
                 menuConsultaCosecha
-                menuGeneral
+
                 
             "4" -> do
                 clearConsole
                 opcionesCancelacionModificacion
-                menuGeneral
+
                 
             "5" -> do
                 clearConsole
                 menuConsultaDisponibilidad
-                menuGeneral
                 
             "6" -> do
                 clearConsole

@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha,cancelarCosechaUSER ,modificarCosecha,modificarFechasCosecha,modificarParcelaCosecha,modificarVegetalCosecha,consultarDisponibilidadBasica,consultarDisponibilidadDetallada,pedirFechaValida,clearConsole) where
+module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, mostrarListaTrabajadoresUSER, agregarParcela, mostrarParcelasUSER, obtenerDatosCosecha, agregarTrabajador, mostrarCosechasUSER, mostrarCosechaSolaUSER,pedirCodigoCosecha,cancelarCosechaUSER ,modificarCosecha,modificarFechasCosecha,modificarParcelaCosecha,modificarVegetalCosecha,consultarDisponibilidadBasica,consultarDisponibilidadDetallada,pedirFechaValida,clearConsole,topTresParcelasVentas,topParcelaMayorVolumen, cosechasSobreproduccion,cosechasSubproduccion) where
     import System.Process
     import Text.Printf (printf)
     import Text.Read(readMaybe)
@@ -12,7 +12,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     import Data.Ord (comparing)
     import Data.Maybe (catMaybes)
     import Data.List.Split (splitOn)
-    import Data.List (maximumBy)
+    import Data.List (maximumBy, sortBy)
     import Data.List (nubBy)
     import Data.List (find)
     import Data.Time (Day, formatTime, defaultTimeLocale, addDays)  -- Añadir addDays aquí
@@ -737,7 +737,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 case codigoCosechaMaybe of
                     Just codigoCosecha -> do
                         cs <- obtenerCosechas "cosechas.json"
-                        let cosechaEncontrada = find (\c -> identificadorCosecha c == codigoCosecha) cs
+                        let cosechaEncontrada = find (\c -> identificadorCosecha c == codigoCosecha && estadoCosecha c) cs
                         case cosechaEncontrada of
                             Just cosecha -> do
                                 let vegetal = tipoVegetalCosecha cosecha
@@ -745,7 +745,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                                 if guardado 
                                     then putStrLn "Cosecha cerrada, datos actualizados...."
                                     else putStrLn "Cosecha no cerrada, datos no guardados, verifique de nuevo"
-                            Nothing -> putStrLn "Cosecha no encontrada."
+                            Nothing -> putStrLn "Cosecha no encontrada o ya cerrada..."
                     Nothing -> putStrLn "Formato de número inválido"
 
 {------------------------------------------------------------------------}
@@ -934,3 +934,40 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                             else c) cosechas
                 guardarCosechas nuevasCosechas
                 putStrLn "Tipo de vegetal modificado exitosamente."
+
+    parcelasOrdenadasPorVenta :: [Parcela] -> [Parcela]
+    parcelasOrdenadasPorVenta = take 3 . sortBy (flip (comparing historialVenta))
+
+    parcelasOrdenadasPorVolumen :: [Parcela] -> Parcela
+    parcelasOrdenadasPorVolumen = head . sortBy (flip (comparing volumenCosecha))
+
+    topTresParcelasVentas :: IO()
+    topTresParcelasVentas = do
+        parcelas <- leerParcelas "parcelas.json"
+        let top3ParcelasOrdenadas = parcelasOrdenadasPorVenta parcelas
+        mostrarParcelas top3ParcelasOrdenadas
+    
+    topParcelaMayorVolumen :: IO()
+    topParcelaMayorVolumen = do
+        parcelas <- leerParcelas "parcelas.json"
+        let parcelaConMayorVolumen = parcelasOrdenadasPorVolumen parcelas
+        let parcelaConMayorVolumenImprimir = [parcelaConMayorVolumen]
+        mostrarParcelas parcelaConMayorVolumenImprimir
+
+    cosechasSobreproduccionTerminadas :: [Cosecha] -> [Cosecha]
+    cosechasSobreproduccionTerminadas = filter (\c -> not (estadoCosecha c) && produccionObtenida c > produccionEsperada c)
+
+    cosechasSubproduccionTerminadas :: [Cosecha] -> [Cosecha]
+    cosechasSubproduccionTerminadas = filter (\c -> not (estadoCosecha c) && produccionObtenida c < produccionEsperada c)
+
+    cosechasSobreproduccion :: IO()
+    cosechasSobreproduccion = do
+        cosechas <- obtenerCosechas "cosechas.json"
+        let cosechasSobreProd = cosechasSobreproduccionTerminadas cosechas
+        mostrarCosechas cosechasSobreProd
+
+    cosechasSubproduccion :: IO()
+    cosechasSubproduccion = do
+        cosechas <- obtenerCosechas "cosechas.json"
+        let cosechasSubProd = cosechasSubproduccionTerminadas cosechas
+        mostrarCosechas cosechasSubProd
