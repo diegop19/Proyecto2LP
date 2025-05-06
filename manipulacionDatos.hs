@@ -623,8 +623,8 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             trabajadoresEncabezado = printf "%-15s | %-20s" "Nombre" "Rol"
             trabajadoresLinea = replicate 40 '-'
 
-            imprimirTrabajador (Trabajador _ nombre rol _) =
-                printf "%-15s | %-20s\n" nombre rol
+            imprimirTrabajador (Trabajador cedula nombre rol cantidadCosechasTrabajadas) =
+                printf " %-20s | %-20s | %-10s | %-10s\n" cedula nombre rol (show cantidadCosechasTrabajadas)
 
     mostrarCosechas :: [Cosecha] -> IO ()
     mostrarCosechas cosechas = do
