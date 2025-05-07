@@ -195,26 +195,26 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         herramientasExistentes <- obtenerHerramientas rutaJSON -- obtiene las herramientas del archivo .json
         let todasHerramientas = herramientasExistentes ++ herramientasLeidas --une las nuevas herramientas y las herramientas existentes
             herramientasActualizadas = eliminarDuplicados todasHerramientas -- eliminamos las herramientas duplicadas en la lista unida
-        mostrarListaHerramientas herramientasActualizadas 
-        BL.writeFile rutaJSON(encode herramientasActualizadas)
+        mostrarListaHerramientas herramientasActualizadas  -- mostramos las herramientas 
+        BL.writeFile rutaJSON(encode herramientasActualizadas) -- guardamos las herramientas
         putStrLn ("Herramientas guardadas exitósamente...")
-
+    -- función para eliminar herramientas duplicadas
     eliminarDuplicados :: [Herramienta] -> [Herramienta]
     eliminarDuplicados = nubBy (\h1 h2 -> codigoHerramienta h1 == codigoHerramienta h2)
 
-
+    -- función que es para guardar herramientas pero sólo visible para el modulo de menus
     guardarHerramientasUSER :: FilePath -> FilePath -> IO()
     guardarHerramientasUSER archivoJSON archivoHerramientas = do 
         herramientasNuevas <- leerArchivoPlano archivoHerramientas
         guardarHerramientasJSON archivoJSON herramientasNuevas
         putStrLn("Éxito.")
-    
+    -- función para mostrar las herramientas pero sólo visible para el modulo de menus
     mostrarHerramientasUSER :: FilePath -> IO()
     mostrarHerramientasUSER rutaJSON = do
         listaHerramientas <- obtenerHerramientas rutaJSON
         mostrarListaHerramientas listaHerramientas
 
-
+    -- funcion para mostrar trabajadores pero sólo visible para el modulo de menus
     mostrarListaTrabajadoresUSER :: FilePath -> IO()
     mostrarListaTrabajadoresUSER archivoTrabajadores = do
         existe <- validarExistencia archivoTrabajadores
@@ -225,39 +225,40 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         mostrarListaTrabajadores listaTrabajadores  
 {------------------------------------------------------------------------------}
 --DE AQUÍ EN ADELANTE TRABAJAREMOS CON LA MANIPULACIÓN DE PARCELAS
-    buscarHerramienta :: String -> [Herramienta] -> Maybe Herramienta
+    -- funcion que recibe el codigo de la herramienta y la lista de herramientas y si encuentra coincidencia
+    buscarHerramienta :: String -> [Herramienta] -> Maybe Herramienta-- retorna la herramienta
     buscarHerramienta codigo hs = find (\h -> codigoHerramienta h == codigo) hs
-
+    -- recibe un string de codigos de herramienta separados por comas y la lista de herramientas 
     obtenerHerramientasParaParcela :: String -> [Herramienta] -> [Herramienta]
     obtenerHerramientasParaParcela codigos listaHerramientas = 
-        let codigosSeparados = splitOn "," codigos
-            herramientasEncontradas = map (`buscarHerramienta` listaHerramientas) codigosSeparados
+        let codigosSeparados = splitOn "," codigos -- separa los codigos en una lista usando la coma como separador
+            herramientasEncontradas = map (`buscarHerramienta` listaHerramientas) codigosSeparados -- tomamos las herramientas con los códigos de las herramientas encontrados
         in catMaybes herramientasEncontradas
-
+    -- función para pedir el precio de un vegetal recursivamente hasta que se ingrese un formato válido
     pedirPrecio :: IO Double
     pedirPrecio = do
         putStrLn "Escriba el precio por Kg."
         input <- getLine
         case readMaybe input of
-            Just precio -> return precio
+            Just precio -> return precio -- si tiene formmato de double se retorna
             Nothing -> do
-                putStrLn "Entrada inválida. Intenta de nuevo."
+                putStrLn "Entrada inválida. Intenta de nuevo." -- si no se pide de nuevo
                 pedirPrecio
 
-    
+    -- Función para pedir el area de la parcela hasta que se ingrese un entero válido
     pedirArea :: IO Int
     pedirArea = do
         putStrLn "Escriba el area en mts**2"
         input <- getLine
         case readMaybe input of
-            Just area -> return area
+            Just area -> return area -- si es valido retorna el area
             Nothing -> do
-                putStrLn "Entrada inválida. Intenta de nuevo."
+                putStrLn "Entrada inválida. Intenta de nuevo." -- si no es valido se pide que se ingrese de nuevo
                 pedirArea
-
+    -- lee las parcelas que estan en el .json y retorna una lista de parcelas
     leerParcelas :: FilePath -> IO [Parcela]
     leerParcelas archivo = do
-        existe <- validarExistencia archivo
+        existe <- validarExistencia archivo -- se obtiene si el archivo existe
         if not existe 
             then crearArchivoJSON archivo
             else putStrLn("")
