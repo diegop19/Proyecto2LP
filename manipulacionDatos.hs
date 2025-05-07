@@ -449,25 +449,26 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
 {-------------------------------------------------------------------------------------------}
 --De aquí en adelante se trabajarán las cosechas
+    -- función que nos ayuda a saber si una fecha ingresada cumple con el formato requerido
     validarFormatoFecha :: String -> Maybe Day
     validarFormatoFecha fechaStr =
         parseTimeM True defaultTimeLocale "%Y-%m-%d" fechaStr
-
+    -- función que sigue pidiendo una fecha hasta que se agregue con el formato deseado
     pedirFechaValida :: IO Day
     pedirFechaValida = do
         input <- getLine
         case validarFormatoFecha input of
-            Just fecha -> return fecha
+            Just fecha -> return fecha -- si se agrega correctamente retornamos la fecha
             Nothing -> do
                 putStrLn "Formato inválido. Intente de nuevo (ejemplo: 2025-05-01)."
-                pedirFechaValida
-
+                pedirFechaValida -- si no seguimos pidiendo la fecha hasta que sea correcta
+    -- función que nos ayuda a validar que las fechas de inicio no sea menor que hoy y que la fecha final no sea menor a la fecha de inicio
     validarFechas :: Day -> Day -> IO Bool
     validarFechas fechaInicio fechaFinal = do
         hoy <- utctDay <$> getCurrentTime
         return (fechaInicio < fechaFinal && fechaInicio >= hoy) 
 
-    
+    -- pedimos una cantidad esperada a recolectar y no dejamos de pedir hasta que se ingrese correctamente un numero double
     pedirCantidadEsperada :: IO Double
     pedirCantidadEsperada = do
         putStrLn "Escriba la cantidad esperada a recolectar en Kg."
@@ -477,32 +478,32 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             Nothing -> do
                 putStrLn "Entrada inválida. Intenta de nuevo."
                 pedirPrecio
-
+    -- función para encontrar un trabajador en una lista de trabajadores
     buscarTrabajador :: String -> [Trabajador] -> Maybe Trabajador
-    buscarTrabajador cedula = find (\(Trabajador c _ _ _) -> c == cedula)
-
-    obtenerTrabajadoresPorCedulas :: String -> [Trabajador] -> [Trabajador]
+    buscarTrabajador cedula = find (\(Trabajador c _ _ _) -> c == cedula) -- si lo encuentra los retornamos
+    -- función para obtener una lista de trabajadores, recibe un string y una lista de trabajadores y devuelve la lista de trabajadores
+    obtenerTrabajadoresPorCedulas :: String -> [Trabajador] -> [Trabajador] -- cuyas cédulas estaban en el string
     obtenerTrabajadoresPorCedulas cedulas trabajadores =
         let cedulasSeparadas = splitOn "," cedulas
-            trabajadoresEncontrados = map (`buscarTrabajador` trabajadores) cedulasSeparadas
+            trabajadoresEncontrados = map (`buscarTrabajador` trabajadores) cedulasSeparadas 
         in catMaybes trabajadoresEncontrados
-
+    -- al igual que las parcelas obtenemos el id de las cosechas más alto y le sumamos uno
     obtenerNuevoIdCosecha :: FilePath -> IO Int
     obtenerNuevoIdCosecha archivo = do
         cosechas <- obtenerCosechas archivo
         return $ case cosechas of
             [] -> 1
             cs -> maximum (map identificadorCosecha cs) + 1
-    
+    -- convertimos un string a un entero si es posible
     convertirAEntero :: String -> Maybe Int
     convertirAEntero = readMaybe
-    
+    -- obtenemos los datos de la cosecha usando varias de las funciones mencionadas anteriormente
     obtenerDatosCosecha :: IO()
     obtenerDatosCosecha = do
         parcelas <- leerParcelas "parcelas.json"
         mostrarParcelas parcelas
         putStrLn("Ingrese el id de la parcela en la que va a cosechar")
-        idParcelaStr <- getLine
+        idParcelaStr <- getLine -- Todo esto son inputs que se le piden al usuario
         let idParcelaMaybe = convertirAEntero idParcelaStr
         putStrLn ("Ingrese la fecha de inicio de la cosecha (Año-Mes-Día)")
         fechaInicio <- pedirFechaValida
@@ -514,35 +515,35 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         mostrarListaTrabajadores ts
         putStrLn ("Seleccione los trabajadores que quiere contratar para esta cosecha, con su cedula separados por comas\n Los elementos erróneos no serán agregados")
         cedulasTrabajadores <- getLine
-        let trabajadores = obtenerTrabajadoresPorCedulas cedulasTrabajadores ts
+        let trabajadores = obtenerTrabajadoresPorCedulas cedulasTrabajadores ts -- obtenemos los trabajadores que trabajaran en la cosecha
         cantidadEsperada <- pedirCantidadEsperada
-        fechasCorrectas <- validarFechas fechaInicio fechaFinal
-        existe <- validarExistencia "cosechas.json"
+        fechasCorrectas <- validarFechas fechaInicio fechaFinal --validamos que las fechas sean correctas
+        existe <- validarExistencia "cosechas.json" -- verificamos si existe en archivo .json donde guardaremos las cosechas
         if existe then putStrLn("Verificando existencia...")
-        else crearArchivoJSON "cosechas.json"
-        idCosecha <- obtenerNuevoIdCosecha "cosechas.json"
-        if fechasCorrectas 
+        else crearArchivoJSON "cosechas.json" -- en caso de no existir lo creamos
+        idCosecha <- obtenerNuevoIdCosecha "cosechas.json" -- obtenemos el nuevo id de la cosecha
+        if fechasCorrectas -- si las fechas son correctas
             then do
-                case idParcelaMaybe of
-                    Just idParcela -> do
+                case idParcelaMaybe of -- si el id de la parcela tiene un formato correcto
+                    Just idParcela -> do 
                         let nuevaCosecha = Cosecha idCosecha idParcela trabajadores fechaInicio fechaFinal cantidadEsperada 0 vegetal True
-                        cs <- obtenerCosechas "cosechas.json"
-                        let esDisponible = validarDisponibilidad nuevaCosecha cs
+                        cs <- obtenerCosechas "cosechas.json" --creamos una nueva cosecha y obtenemos las cosechas existentes
+                        let esDisponible = validarDisponibilidad nuevaCosecha cs -- validamos la disponibilidad de la parcela usando los datos de la nueva cosecha
                         ps <- leerParcelas "parcelas.json"
-                        let vegetalCoincide = verificarTipoVegetal (tipoVegetalCosecha nuevaCosecha) (idParcelaCosecha nuevaCosecha) ps
-                        if vegetalCoincide 
+                        let vegetalCoincide = verificarTipoVegetal (tipoVegetalCosecha nuevaCosecha) (idParcelaCosecha nuevaCosecha) ps -- verificamos si el vegetal coincide con alguno de los vegetales en la cosecha
+                        if vegetalCoincide -- si el vegetal coincide
                             then do 
-                                putStrLn("El vegetal es el correcto...")
-                                if esDisponible 
+                                putStrLn("El vegetal es el correcto...") 
+                                if esDisponible -- si la parcela está disponible
                                     then
-                                        if not (null trabajadores) && length trabajadores == 1
+                                        if not (null trabajadores) && length trabajadores == 1 -- si el trabajador es exactamete uno solo
                                             then do 
                                                 putStrLn("No hay choques de horario...")
                                                 putStrLn("Guardando...")
-                                                agregarCosechaJSON nuevaCosecha
+                                                agregarCosechaJSON nuevaCosecha -- entonces guardamos
                                             else do
                                                 putStrLn("Tienes que agregar exactamente un trabajador")
-                                    else do
+                                    else do -- Si no se cumple alguna de las cosas anteriormente mencionadas se da un mensaje respectivo
                                         putStrLn("Hay choques de horario, verifique e intente de nuevo")
                             else do
                                 putStrLn("El vegetal no coincide con el de la parcela. verifique e intente de nuevo")
@@ -551,14 +552,14 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                         obtenerDatosCosecha
         else do
             putStrLn("Las fechas ingresadas son incorrectas, verifíquelas e intente de nuevo")
-    
+    -- recibimos el nombre del vegetal el codigo de la parcela y las parcelas
     verificarTipoVegetal :: String -> Int -> [Parcela] -> Bool
     verificarTipoVegetal vegetal codigoP parcelas =
-        case find (\p -> codigoParcela p == codigoP) parcelas of
-            Just parcela -> any (\v -> tipoVegetal v == vegetal) (vegetales parcela)
-            Nothing -> False
+        case find (\p -> codigoParcela p == codigoP) parcelas of -- donde el codigo de la parcela coincide
+            Just parcela -> any (\v -> tipoVegetal v == vegetal) (vegetales parcela) --  si algún nombre de vegetal coincide con el vegetal enonces retornamos true
+            Nothing -> False -- si ninguno coincide retornamos false
 
-
+    -- validamos la disponibilidad de la parcela
     validarDisponibilidad :: Cosecha -> [Cosecha] -> Bool
     validarDisponibilidad cosechaNueva cosechas =
         all fechasNoChocan cosechasFiltradas
