@@ -731,43 +731,43 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 guardarParcelas "parcelas.json" parcelasActualizadas
                 return True -- si se guardo exitosamente entonces retornamos true
             Nothing -> return False -- si no se guardó retornamos false
-
+    -- función para aumentar en 1 la cantidad de cosechas realizada por el traajador
     actualizarTrabajadores :: Trabajador -> [Trabajador] -> [Trabajador]
     actualizarTrabajadores trabajadorCosecha trabajadoresGeneral =
         map actualizar trabajadoresGeneral
         where
             actualizar t
-                | cedula t == cedula trabajadorCosecha =
+                | cedula t == cedula trabajadorCosecha = 
                     t { cantidadCosechasTrabajadas = cantidadCosechasTrabajadas t + 1 }
                 | otherwise = t
 
-
+    -- función para pedir el codigo de la cosecha que se va a cerrar
     pedirCodigoCosecha :: IO()
     pedirCodigoCosecha = do
         putStrLn ("Ingrese el codigo (ID) de la cosecha que desea cerrar")
-        codigoStr <- getLine
+        codigoStr <- getLine --pedimos el codigo
         putStrLn("Indique la cantidad recolectada en Kg")
-        cantidadRecolectada <- pedirCantidadRecolectada
-        let codigoCosechaMaybe = convertirAEntero codigoStr
-        if cantidadRecolectada == 0.0001
+        cantidadRecolectada <- pedirCantidadRecolectada -- pedimos la cantidad recolectada
+        let codigoCosechaMaybe = convertirAEntero codigoStr -- obtenemos el maybe codigo
+        if cantidadRecolectada == 0.0001 -- si la cantidad es el monto simbolico para error entonces
             then
-                putStrLn("Regresando al menú principal...")
-            else
-                case codigoCosechaMaybe of
-                    Just codigoCosecha -> do
+                putStrLn("Regresando al menú principal...") -- regresamos al menu principal
+            else -- en caso de no ser el monto de error
+                case codigoCosechaMaybe of  -- si el codigo maybe
+                    Just codigoCosecha -> do -- si resulta ser un numero valid
                         cs <- obtenerCosechas "cosechas.json"
-                        let cosechaEncontrada = find (\c -> identificadorCosecha c == codigoCosecha && estadoCosecha c) cs
-                        case cosechaEncontrada of
-                            Just cosecha -> do
-                                let vegetal = tipoVegetalCosecha cosecha
+                        let cosechaEncontrada = find (\c -> identificadorCosecha c == codigoCosecha && estadoCosecha c) cs -- se identifica la cosecha que se quiere cerrar
+                        case cosechaEncontrada of -- si la cosecha
+                            Just cosecha -> do -- resulta ser una cosecha
+                                let vegetal = tipoVegetalCosecha cosecha -- obtenemos los datos de la cosecha que vamos a necesitar para actualizar los datos
                                 let trabajadoresCosecha = trabajadores cosecha
                                 let trabajadorCosecha = head trabajadoresCosecha
                                 trabajadoresGeneral <- obtenerTrabajadores "trabajadores.json"
-                                let trabajadoresActualizados = actualizarTrabajadores trabajadorCosecha trabajadoresGeneral
-                                guardarTrabajadores trabajadoresActualizados "trabajadores.json"
+                                let trabajadoresActualizados = actualizarTrabajadores trabajadorCosecha trabajadoresGeneral --actualizamos al trabajador
+                                guardarTrabajadores trabajadoresActualizados "trabajadores.json" --guardamos los trabajadores
 
                                 guardado <- actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada vegetal
-                                if guardado 
+                                if guardado -- si se guardo exitosamente entonces imprimimos un mensaje que lo indica
                                     then putStrLn "Cosecha cerrada, datos actualizados...."
                                     else putStrLn "Cosecha no cerrada, datos no guardados, verifique de nuevo"
                             Nothing -> putStrLn "Cosecha no encontrada o ya cerrada..."
@@ -962,38 +962,38 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
 {-------------------------------------------------------------------------}
 --ESTADISTICAS DEL SISTEMA
-
+    -- ordenamos las parcelas por venta y devolvemos las 3 parcelas con mayor venta historica
     parcelasOrdenadasPorVenta :: [Parcela] -> [Parcela]
-    parcelasOrdenadasPorVenta = take 3 . sortBy (flip (comparing historialVenta))
-
+    parcelasOrdenadasPorVenta = take 3 . sortBy (flip (comparing historialVenta)) -- ordenamos y tomamos los primeros 3 elementos
+    -- ordenamos las parcelas por volumen de cosecha y tomamos la primera parcela en la lista
     parcelasOrdenadasPorVolumen :: [Parcela] -> Parcela
     parcelasOrdenadasPorVolumen = head . sortBy (flip (comparing volumenCosecha))
-
+    -- mostramos el top 3 parcelas con mayor venta
     topTresParcelasVentas :: IO()
     topTresParcelasVentas = do
         parcelas <- leerParcelas "parcelas.json"
         let top3ParcelasOrdenadas = parcelasOrdenadasPorVenta parcelas
-        mostrarParcelas top3ParcelasOrdenadas
-    
+        mostrarParcelas top3ParcelasOrdenadas --mostramos la lista de parcelas que obtuvimos
+    --imprimimos la parcela con mayor volumen
     topParcelaMayorVolumen :: IO()
     topParcelaMayorVolumen = do
         parcelas <- leerParcelas "parcelas.json"
         let parcelaConMayorVolumen = parcelasOrdenadasPorVolumen parcelas
-        let parcelaConMayorVolumenImprimir = [parcelaConMayorVolumen]
-        mostrarParcelas parcelaConMayorVolumenImprimir
-
+        let parcelaConMayorVolumenImprimir = [parcelaConMayorVolumen] --convertimos en una lista de un sólo elemento
+        mostrarParcelas parcelaConMayorVolumenImprimir --porque mostrar parcelas recibe una lista de parcelas
+    -- obtenemos una lista de las cosechas que tiene más producción obtenida que la esperada y que también esten terminadas
     cosechasSobreproduccionTerminadas :: [Cosecha] -> [Cosecha]
     cosechasSobreproduccionTerminadas = filter (\c -> not (estadoCosecha c) && produccionObtenida c > produccionEsperada c)
-
+    -- obtenemos una lista de las cosechas que tiene menos producción obtenida que la esperada y que también esten terminadas
     cosechasSubproduccionTerminadas :: [Cosecha] -> [Cosecha]
     cosechasSubproduccionTerminadas = filter (\c -> not (estadoCosecha c) && produccionObtenida c < produccionEsperada c)
-
+    -- mostramos las cosechas con sobre producción
     cosechasSobreproduccion :: IO()
     cosechasSobreproduccion = do
         cosechas <- obtenerCosechas "cosechas.json"
         let cosechasSobreProd = cosechasSobreproduccionTerminadas cosechas
         mostrarCosechas cosechasSobreProd
-
+    -- mostramos las cosechas con subproducción
     cosechasSubproduccion :: IO()
     cosechasSubproduccion = do
         cosechas <- obtenerCosechas "cosechas.json"
@@ -1001,13 +1001,13 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         mostrarCosechas cosechasSubProd
     
     
-
+    -- ordenamos la lista de trabajadores por la cantidad de cosechas realizadas
     trabajadoresOrdenadosPorTrabajo :: [Trabajador] -> Trabajador
-    trabajadoresOrdenadosPorTrabajo = head . sortBy (flip (comparing cantidadCosechasTrabajadas))
-
+    trabajadoresOrdenadosPorTrabajo = head . sortBy (flip (comparing cantidadCosechasTrabajadas)) -- obtenemos el trabajador que encabeza la lista
+    -- mostramos el trabajador con más cosechas
     mostrarTrabajadorConMasCosechas :: IO()
     mostrarTrabajadorConMasCosechas = do
         trabajadores <- obtenerTrabajadores "trabajadores.json"
         let trabajadorMayor = trabajadoresOrdenadosPorTrabajo trabajadores
-        let mostrarTrabajador = [trabajadorMayor]
-        mostrarListaTrabajadores mostrarTrabajador
+        let mostrarTrabajador = [trabajadorMayor] --convertimos el trabajador en una lista porque
+        mostrarListaTrabajadores mostrarTrabajador --mmostrar lista trabajadores sólo recibe listas de trabajadores
