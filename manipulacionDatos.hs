@@ -260,20 +260,20 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     leerParcelas archivo = do
         existe <- validarExistencia archivo -- se obtiene si el archivo existe
         if not existe 
-            then crearArchivoJSON archivo
+            then crearArchivoJSON archivo -- en caso de no existir se crea el archivo
             else putStrLn("")
-        contenido <- BL.readFile archivo
+        contenido <- BL.readFile archivo -- se obtienen los datos del archivo
         case decode contenido of
-            Just parcelas -> return parcelas
-            Nothing -> return []
-
+            Just parcelas -> return parcelas -- si todo sale bien se retorna la lista de parcelas
+            Nothing -> return [] -- sino se retorna una lista vacía
+    -- esta función retorna el id de la parcela agregada de última y le suma uno para retornar un nuevo id consecutivo
     obtenerNuevoIdParcela :: FilePath -> IO Int
     obtenerNuevoIdParcela archivo = do
         parcelas <- leerParcelas archivo
         return $ case parcelas of
-            [] -> 1
+            [] -> 1 -- si la lista está vacía retorna 1 porque será el primier id
             ps -> maximum (map codigoParcela ps) + 1
-            
+    -- función para guardar todas las parcelas en la lista en la ruta indicada  
     guardarParcelas :: FilePath -> [Parcela] -> IO ()
     guardarParcelas archivo parcelas = do
         existe <- validarExistencia archivo
@@ -282,7 +282,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             else do
                 crearArchivoJSON archivo
                 BL.writeFile archivo (encode parcelas)
-
+    -- creamos una parcela, recibimos todos los datos que necesitamos del usuario
     crearParcela :: String -> String -> [Vegetal] -> [Herramienta] -> Int -> IO ()
     crearParcela nombreParcela zonaParcela listaVegetales listaHerramientas areaEnMetrosCuadrados = do
         existe <- validarExistencia "parcelas.json"
@@ -291,7 +291,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             else putStrLn "Existente"
 
         listaParcelas <- leerParcelas "parcelas.json"
-        id <- obtenerNuevoIdParcela "parcelas.json"
+        id <- obtenerNuevoIdParcela "parcelas.json" -- obtenemos el id siguiente
         let nuevaParcela = Parcela {
             codigoParcela = id,
             nombreParcela = nombreParcela,
@@ -301,24 +301,24 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             herramientas = listaHerramientas,
             historialVenta = 0,
             volumenCosecha = 0
-        }
-        let parcelasActualizadas = listaParcelas ++ [nuevaParcela]
-        guardarParcelas "parcelas.json" parcelasActualizadas
+        } -- creamos la parcela
+        let parcelasActualizadas = listaParcelas ++ [nuevaParcela] --agregamos la nueva parcela a la lista de parcelas
+        guardarParcelas "parcelas.json" parcelasActualizadas -- guardamos la lista actualizada con la nueva parcela
         putStrLn("Parcela guardada exitosamente")
-
+    -- función que nos ayuda a guardar todos los vegetales que existen en una parcela
     pedirVegetales :: [Vegetal] -> IO [Vegetal]
     pedirVegetales acumulados = do
         putStrLn "Ingrese el nombre del vegetal (o escriba 'fin' para terminar):"
         nombre <- getLine
-        if nombre == "fin"
+        if nombre == "fin" -- Hasta que el usuario ingrese fin seguimos pidiendole vegetales
             then return acumulados
             else do
                 putStrLn "Ingrese el precio por kilo del vegetal:"
                 precioStr <- getLine
                 let precio = read precioStr :: Double
                 let vegetal = Vegetal nombre precio
-                pedirVegetales (acumulados ++ [vegetal])
-
+                pedirVegetales (acumulados ++ [vegetal]) --agregamos vegetales recursivamente
+    -- función para pedirle los nuevos datos al usuario de la parcela que va a agregar
     agregarParcela :: IO()
     agregarParcela = do
         putStrLn("Escriba el nombre de la parcela.")
@@ -328,36 +328,36 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         area <- pedirArea
 
         putStrLn("Ingrese los vegetales de la parcela: ")
-        vegetales <- pedirVegetales []
+        vegetales <- pedirVegetales [] -- pedimos todos los vegetales que se podrán cosechar
 
-        mostrarHerramientasUSER "herramientas.json"
-        putStrLn("Ingrese el código de las herramientas que quiere agregar separados por comas. \n (Los datos erróneos no serán agregados)")
-        listaCodigos <- getLine
+        mostrarHerramientasUSER "herramientas.json" -- mostramos las herramientas existentes para que el usuario elija cuales asocia a esta parcela
+        putStrLn("Ingrese el código de las herramientas que quiere agregar separados por comas. \n (Los datos erróneos no serán agregados)") 
+        listaCodigos <- getLine -- guardamos un string de codigos de herramientas separados por comas
         listaHerramientas <- obtenerHerramientas "herramientas.json"
-        let herramientasParcela = obtenerHerramientasParaParcela listaCodigos listaHerramientas
+        let herramientasParcela = obtenerHerramientasParaParcela listaCodigos listaHerramientas -- guardamos las herramientas que coincidan con los codigos
         nuevoId <- obtenerNuevoIdParcela "parcelas.json"
-        if null herramientasParcela then do
+        if null herramientasParcela then do -- si la lista es vacia se le pide al usuario que ingrese al menos una herramienta
             putStrLn("Debes agregar al menos una herramienta para la parcela")
             agregarParcela
         else
-            crearParcela nombre zona vegetales herramientasParcela area
-
+            crearParcela nombre zona vegetales herramientasParcela area -- una vez con todos los datos creamos la nueva parcela y la guardamos
+    -- funcion que es visible para el modulo de menus
     mostrarParcelasUSER :: IO()
     mostrarParcelasUSER = do
         parcelas <- leerParcelas "parcelas.json"
         mostrarParcelas parcelas
 
-
+    -- mostramos las parcelas 
     mostrarParcelas :: [Parcela] -> IO ()
     mostrarParcelas parcelas = do
         if null parcelas
-        then putStrLn "No hay parcelas registradas."
-        else mapM_ imprimirParcela parcelas
-
+        then putStrLn "No hay parcelas registradas." -- si no hay imprimimos que no hay
+        else mapM_ imprimirParcela parcelas -- si hay imprimimos todas las parcelas en la lista
+    -- función para imprimir un tipo de vegetal
     imprimirVegetal :: Vegetal -> IO ()
     imprimirVegetal (Vegetal tipo precio) = do
         putStrLn $ "  Tipo: " ++ tipo ++ ", Precio por Kg: " ++ show precio
-
+    -- función para imprimir una parcela individual
     imprimirParcela :: Parcela -> IO ()
     imprimirParcela (Parcela id nombre zona area vegetales herramientas totalVenta totalCosechado) = do
         putStrLn $ "ID DE LA PARCELA " ++ show id
@@ -367,15 +367,15 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         putStrLn "Vegetales cultivados:"
         if null vegetales
             then putStrLn "  No hay vegetales asociados."
-            else mapM_ imprimirVegetal vegetales
+            else mapM_ imprimirVegetal vegetales -- imprimimos todos los vegetales que se pueden cultivar
         printf "Total recaudado (en colones): %.2f\n" totalVenta
         printf "Total cosechado (en Kg): %.2f\n" totalCosechado
         putStrLn "Herramientas asociadas:"
         if null herramientas
         then putStrLn "  No hay herramientas asociadas."
-        else mapM_ imprimirHerramienta herramientas
+        else mapM_ imprimirHerramienta herramientas -- se imprimen todas las herramientas asociadas a la parcela
         putStrLn $ replicate 40 '-'  -- Separador entre parcelas
-
+    -- función para imprimir una herramienta
     imprimirHerramienta :: Herramienta -> IO ()
     imprimirHerramienta (Herramienta codigo nombre descripcion tipo) = do
         printf "  Código: %s, Nombre: %s, Descripción: %s, Tipo: %s\n" codigo nombre descripcion tipo
