@@ -562,7 +562,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     -- validamos la disponibilidad de la parcela
     validarDisponibilidad :: Cosecha -> [Cosecha] -> Bool
     validarDisponibilidad cosechaNueva cosechas =
-        all fechasNoChocan cosechasFiltradas
+        all fechasNoChocan cosechasFiltradas -- verificacmos que no haya una cosecha en las mismas fechas y en la misma parcela
         where
             idParcelaNueva = idParcelaCosecha cosechaNueva
             fechaInicioNueva = fechaInicio cosechaNueva
@@ -574,7 +574,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 fechaInicioNueva > fechaFinal cosechaExistente || 
                 fechaFinalNueva < fechaInicio cosechaExistente 
 
-
+    -- función para obtener las cosechas
     obtenerCosechas :: FilePath -> IO [Cosecha]
     obtenerCosechas archivo = do
         existe <- validarExistencia archivo  
@@ -587,17 +587,18 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             else do
                 crearArchivoJSON archivo
                 return []
-
+    -- función para guardar las cosechas en una lista
     guardarCosechas :: [Cosecha] -> IO()
     guardarCosechas cs = do
         BL.writeFile "cosechas.json" (encode cs)
-
+    -- función que recibe una cosecha y la adjunta a la lista de cosechas existentes
+    -- luego guarda nuevamente el contenido
     agregarCosechaJSON :: Cosecha -> IO()
     agregarCosechaJSON cosecha = do
         cs <- obtenerCosechas "cosechas.json"
         let listaActualizada = cs ++ [cosecha]
         guardarCosechas listaActualizada
-
+    -- muestra sólo una cosecha
     mostrarCosechaSola :: Cosecha -> IO ()
     mostrarCosechaSola cosecha@(Cosecha idCosecha idParcela trabajadores fInicio fFinal esperada obtenida vegetal estado) = do
         putStrLn encabezado
@@ -607,7 +608,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         putStrLn trabajadoresEncabezado
         putStrLn trabajadoresLinea
         mapM_ imprimirTrabajador trabajadores
-        where
+        where -- imprimimos los datos de la cosecha
             encabezado = printf "%-5s | %-10s | %-10s | %-12s | %-12s | %-10s | %-10s | %-10s | %-6s"
                     "ID" "Parcela" "Trabaj." "Inicio" "Final" "Esperada" "Obtenida" "Vegetal" "Activa"
             lineaSeparadora = replicate 100 '-' 
@@ -630,7 +631,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
             imprimirTrabajador (Trabajador cedula nombre rol cantidadCosechasTrabajadas) =
                 printf " %-20s | %-20s | %-10s | %-10s\n" cedula nombre rol (show cantidadCosechasTrabajadas)
-
+    -- función para imprimir todas las cosechas en una lista
     mostrarCosechas :: [Cosecha] -> IO ()
     mostrarCosechas cosechas = do
         putStrLn encabezado
@@ -653,11 +654,11 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                     (if estado then "Sí" else "No")
 
             formatearFecha = formatTime defaultTimeLocale "%Y-%m-%d"
-    
+    -- buscamos una cosecha y retornamos si se encuentra la cosecha donde el id coincida
     buscarCosechaPorId :: Int -> [Cosecha] -> Maybe Cosecha
     buscarCosechaPorId idBuscado cosechas =
         find (\c -> identificadorCosecha c == idBuscado) cosechas
-    
+    -- funcion para ser usada en el modulo de menu cosechas, recibe el codigo de la cosecha que se quiere buscar
     mostrarCosechaSolaUSER :: String -> IO ()
     mostrarCosechaSolaUSER codCosechaStr = do
         cs <- obtenerCosechas "cosechas.json"
@@ -669,7 +670,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                     Just cosechaImprimir -> mostrarCosechaSola cosechaImprimir
                     Nothing -> putStrLn "Cosecha no encontrada..."
             Nothing -> putStrLn "Formato de número erróneo..."
-    
+    -- funcion para mostrar todas las cosechas
     mostrarCosechasUSER :: IO()
     mostrarCosechasUSER = do
 
@@ -678,26 +679,26 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     
 {-------------------------}
 -- De AQUÍ EN ADELANTE TRABAJAREMOS CON CIERRE DE COSECHAS.
-
+    -- función para obtener los vegetales en una parcela
     obtenerVegetalesDeParcela :: Parcela -> [Vegetal]
     obtenerVegetalesDeParcela parcela = vegetales parcela
-    
+    -- funcion para actualizar los datos en una parcela
     actualizarParcela :: Int -> String -> Double -> Parcela -> Parcela
-    actualizarParcela idParcela vegetal cantidad parcela
-        | codigoParcela parcela == idParcela =
+    actualizarParcela idParcela vegetal cantidad parcela -- se recibe el id de la parcela, el vegetal, la cantidad recolectada y la parcela
+        | codigoParcela parcela == idParcela = -- si el codigo de la parcela y el id ingresado son iguales
             let 
-                vegetalCorrespondiente = find (\v -> tipoVegetal v == vegetal) (obtenerVegetalesDeParcela parcela)
+                vegetalCorrespondiente = find (\v -> tipoVegetal v == vegetal) (obtenerVegetalesDeParcela parcela) -- obtenemos el vegetal donde el tipo de vegetal se igual
             in case vegetalCorrespondiente of
                 Just v -> 
-                    let ingreso = cantidad * precioPorKilo v
-                    in parcela {
+                    let ingreso = cantidad * precioPorKilo v -- multiplicamos lo recolectado por el precio asociado
+                    in parcela { -- actualizamos estoos datos en la parcela
                         historialVenta = historialVenta parcela + ingreso,
                         volumenCosecha = volumenCosecha parcela + cantidad
                     }
                 Nothing -> parcela 
-        | otherwise = parcela
+        | otherwise = parcela --retornamos la parcela
     
-    
+    -- pedimos la cantidad recolectada hasta que se ingrese un formato correcto
     pedirCantidadRecolectada :: IO Double
     pedirCantidadRecolectada = do
         input <- getLine
@@ -706,30 +707,30 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             Nothing -> do
                 putStrLn "Entrada inválida. Intenta de nuevo."
                 return 0.0001
-
+    -- actualizamos la cosecha y le cambiamos el estado a false para indicar que está cerrada
     actualizarCosecha :: Int -> Double -> String -> Cosecha -> Cosecha
     actualizarCosecha codigo nuevaCantidad vegetal cosecha
         | identificadorCosecha cosecha == codigo =
             cosecha { produccionObtenida = nuevaCantidad, estadoCosecha = False}
         | otherwise = cosecha
-
+    -- obtenemos el codigo de la parcela a partir de la cosecha
     obtenerCodigoParcelaPorCosecha :: Int -> [Cosecha] -> Maybe Int
     obtenerCodigoParcelaPorCosecha idCosecha cosechas =
         idParcelaCosecha <$> find (\c -> identificadorCosecha c == idCosecha) cosechas
-
+    -- actualizamos los datos tanto en la parcela como en la cosecha
     actualizarDatosEnCosechaYParcela :: Int -> Double -> String -> IO Bool
     actualizarDatosEnCosechaYParcela codigoCosecha cantidadRecolectada vegetalCosechado = do
         cs <- obtenerCosechas "cosechas.json"
-        ps <- leerParcelas "parcelas.json"
-        let resultado = obtenerCodigoParcelaPorCosecha codigoCosecha cs
+        ps <- leerParcelas "parcelas.json" --obtenemos la lista de parcelas y cosechas
+        let resultado = obtenerCodigoParcelaPorCosecha codigoCosecha cs -- tratamos de obtener el codigo de la parcela
         case resultado of
-            Just codigoParcela -> do
-                let cosechasActualizadas = map(actualizarCosecha codigoCosecha cantidadRecolectada vegetalCosechado) cs
-                let parcelasActualizadas = map(actualizarParcela codigoParcela vegetalCosechado cantidadRecolectada) ps
-                guardarCosechas cosechasActualizadas
+            Just codigoParcela -> do  --  si lo conseguimos entonces
+                let cosechasActualizadas = map(actualizarCosecha codigoCosecha cantidadRecolectada vegetalCosechado) cs --actualizamos las cosechas 
+                let parcelasActualizadas = map(actualizarParcela codigoParcela vegetalCosechado cantidadRecolectada) ps --actualizamos las parcelas
+                guardarCosechas cosechasActualizadas -- guardamos ambas listas de nuevo
                 guardarParcelas "parcelas.json" parcelasActualizadas
-                return True
-            Nothing -> return False
+                return True -- si se guardo exitosamente entonces retornamos true
+            Nothing -> return False -- si no se guardó retornamos false
 
     actualizarTrabajadores :: Trabajador -> [Trabajador] -> [Trabajador]
     actualizarTrabajadores trabajadorCosecha trabajadoresGeneral =
