@@ -19,6 +19,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
     import Data.Time.Clock (getCurrentTime, utctDay)
     import Data.Time.Format (parseTimeM, defaultTimeLocale)
     import qualified Data.ByteString.Lazy.Char8 as BL
+    --Data herramienta que funciona para guardar en archivos .json
 
     data Herramienta = Herramienta {   
           codigoHerramienta :: String
@@ -29,7 +30,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
     instance FromJSON Herramienta
     instance ToJSON Herramienta
-
+-- Data trabajador que nos sirve para guardar trabajadores en archivo .json
     data Trabajador = Trabajador {
           cedula :: String
         , nombreCompleto :: String
@@ -39,32 +40,32 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
     instance FromJSON Trabajador
     instance ToJSON Trabajador
-
+-- Data vegetal para guardar tipos de vegetales
     data Vegetal = Vegetal {
           tipoVegetal :: String
         , precioPorKilo :: Double
     }deriving (Show, Generic)
     instance FromJSON Vegetal
     instance ToJSON Vegetal
-
+-- Dta parcela que funciona para guardar parcelas en un archivo.json
     data Parcela = Parcela {
           codigoParcela :: Int
         , nombreParcela :: String
         , zona :: String
         , areaEnMetrosCuadrados :: Int
-        , vegetales :: [Vegetal]
-        , herramientas :: [Herramienta]
+        , vegetales :: [Vegetal] --Guarda una lista de todos los vegetales de la parcela
+        , herramientas :: [Herramienta] -- Guarda las herramientas asociadas a la parcela
         , historialVenta :: Double
         , volumenCosecha :: Double
     }deriving (Show, Generic)
 
     instance FromJSON Parcela
     instance ToJSON Parcela
-
+-- Data cosecha para guardar los datos en un .json
     data Cosecha = Cosecha {
           identificadorCosecha :: Int
         , idParcelaCosecha :: Int
-        , trabajadores :: [Trabajador]
+        , trabajadores :: [Trabajador] -- guarda los trabajadores asociados a esa cosecha
         , fechaInicio :: Day
         , fechaFinal :: Day
         , produccionEsperada :: Double
@@ -76,7 +77,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
     instance FromJSON Cosecha
     instance ToJSON Cosecha
-
+-- función que nos ayuda a limpiar la consola para una visualización más limpia
     clearConsole :: IO ()
     clearConsole = do
         _ <- system "cls"  -- Ejecuta el comando 'cls' en la consola de Windows
@@ -84,34 +85,36 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 
 --TODA ESTA ZONA ES DE TRABAJADORES Y HERRAMIENTAS
 {----------------------------------------------------------------------------}
-    
+    -- funcion que recibe una ruta donde están los trabajdores y retorna una lista de trabajadores 
     obtenerTrabajadores :: FilePath -> IO[Trabajador]
     obtenerTrabajadores archivoTrabajadores = do
         contenido <-  BL.readFile archivoTrabajadores
         case eitherDecode contenido of
-            Right hs-> return hs
-            Left _-> return []
-
+            Right hs-> return hs -- Si encuentra la lista la retorna
+            Left _-> return [] -- si no retorna la lista vacía
+    -- recibe una lista de trabajadores e imprime los elementos een esa lista
     mostrarListaTrabajadores :: [Trabajador] -> IO ()
     mostrarListaTrabajadores trabajadores = do
         putStrLn encabezado
         putStrLn lineaSeparadora
         mapM_ imprimirFila trabajadores
-        where
+        where --Definimos las cosas que necesitaremos para la impresión
             encabezado = printf "%-10s | %-35s | %-10s | %-20s"
                                 "Cedula" "Nombre" "rol" "Cosechas"
             lineaSeparadora = replicate 75 '-'
             imprimirFila (Trabajador ced nom rol cosechas) =
-                printf "%-10s | %-35s | %-10s | %-20s\n" ced nom rol (show cosechas)
-    
+                printf "%-10s | %-35s | %-10s | %-20s\n" ced nom rol (show cosechas) -- usamos show para imprimir las cosechas que ha trabajado
+    -- creamos un archivo .json con un nombre que se le pase    
     crearArchivoJSON :: String -> IO()
     crearArchivoJSON nombreArchivo = do
-        BL.writeFile nombreArchivo (BL.pack "[]")
+        BL.writeFile nombreArchivo (BL.pack "[]") -- Lo creamos con una lista
         putStrLn $ "Archivo "++ nombreArchivo ++" Creado exitosamente."
-         
+    
+    -- funcion que verifica si un archivo existe, nos ayuda principalmente para saber si hay que crearlo
     validarExistencia :: String -> IO Bool
-    validarExistencia nombreArchivo = doesFileExist nombreArchivo
+    validarExistencia nombreArchivo = doesFileExist nombreArchivo --Renorna true si encuentra el archivo
 
+    -- guardamos los trabajadores en una lista que se le pase de trabajadores y las guarda en la ruta indicada
     guardarTrabajadores :: [Trabajador] -> FilePath -> IO()
     guardarTrabajadores ts archivo = do
         existe <- validarExistencia archivo
@@ -121,7 +124,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
                 crearArchivoJSON archivo
                 BL.writeFile archivo (encode ts)
 
-
+    -- Función que nos ayuda a agregar un trabajador, se le piden los datos al usuario
     agregarTrabajador :: IO()
     agregarTrabajador = do
         putStrLn("Agregue el numero de cédula del trabajador")
@@ -130,16 +133,16 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
         nombre <- getLine
         putStrLn("Agregue el rol del trabajador")
         rol <- getLine
-        existe <- validarExistencia "trabajadores.json"
-        if existe then putStrLn("Archivo encontrado")
-        else crearArchivoJSON "trabajadores.json"
-        ts <- obtenerTrabajadores "trabajadores.json"
-        let cosechasTrabajadas = 0
-        let nuevoTrabajador = Trabajador cedula nombre rol cosechasTrabajadas
-        let listaTrabajadores = ts ++ [nuevoTrabajador]
-        guardarTrabajadores listaTrabajadores "trabajadores.json"
+        existe <- validarExistencia "trabajadores.json" --se valida si existe el archivo al que se quiere agregar
+        if existe then putStrLn("Archivo encontrado") -- si existe entonces imprimimos un mensaje
+        else crearArchivoJSON "trabajadores.json" --si no existe lo creamos
+        ts <- obtenerTrabajadores "trabajadores.json" -- obtenemos los trabajadores que existen en la lista
+        let cosechasTrabajadas = 0 
+        let nuevoTrabajador = Trabajador cedula nombre rol cosechasTrabajadas --creamos el nuevo dato trabajadoor
+        let listaTrabajadores = ts ++ [nuevoTrabajador] --agregamos a la lista obtenida
+        guardarTrabajadores listaTrabajadores "trabajadores.json" -- guardamos de nuevo en el archivo
 
-
+    -- función que nos retorna las herramientas del archivo de herramientas
     obtenerHerramientas :: FilePath -> IO [Herramienta]
     obtenerHerramientas archivo = do
         existe <- validarExistencia archivo  
@@ -152,7 +155,7 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             else do
                 crearArchivoJSON "herramientas.json"
                 return []
-
+    -- función que recibe una lista de herramientas e imprime todas las herramientas en esa lista
     mostrarListaHerramientas :: [Herramienta] -> IO ()
     mostrarListaHerramientas herramientas = do
         putStrLn encabezado
@@ -162,37 +165,37 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
             encabezado = printf "%-10s | %-15s | %-30s | %-10s"
                             "Código" "Nombre" "Descripción" "Tipo"
             lineaSeparadora = replicate 75 '-'
-            imprimirFila (Herramienta cod nom desc tipo) =
+            imprimirFila (Herramienta cod nom desc tipo) = --Definimos imprimirFila para poder imprimir uno a uno con map las herramientas de la lista
                 printf "%-10s | %-15s | %-30s | %-10s\n" cod nom desc tipo
 
-
+    -- convertimos todas las lineas del archivo plano e una herramienta usando maybe
     convertirHerramienta :: String -> Maybe Herramienta
     convertirHerramienta herramienta = 
         case splitOn "," herramienta of
-            [codigo, nombre, descripcion, tipo] -> Just (Herramienta codigo nombre descripcion tipo)
+            [codigo, nombre, descripcion, tipo] -> Just (Herramienta codigo nombre descripcion tipo) -- si la linea tiene lo que se espera se convierte en una herramienta
             _ ->
-                Nothing
-
-    leerArchivoPlano :: FilePath -> IO[Herramienta]
+                Nothing --si una linea no tiene lo que se espera se omite
+    -- Recibe una ruta donde estan las herramientas que se quieren agregar
+    leerArchivoPlano :: FilePath -> IO[Herramienta] --devuelve una lista de herramientas
     leerArchivoPlano ruta = do
-        contenido <- readFile ruta
-        let lineas = lines contenido
-            herramientas = mapM convertirHerramienta lineas
-        case herramientas of
+        contenido <- readFile ruta -- lee el contenido del archivo
+        let lineas = lines contenido -- separa el contenido en elementos de una lista usando los saltos de lineas como separadores
+            herramientas = mapM convertirHerramienta lineas --pasa cada linea para convertirla en una herramienta
+        case herramientas of -- se valora lo que sucede
             Just hs -> do
-                putStrLn("Archivo leido exitosamente")
+                putStrLn("Archivo leido exitosamente") 
                 putStrLn ("Guardando las herramientas...") 
-                return hs
+                return hs -- si todo estaba bien se retorna la lista
             Nothing -> do
                 putStrLn("Error, el archivo tiene alguna(s) lineas mal")
-                return []
-    
+                return [] -- si no se retorna una lista vacia
+    -- Recibe una ruta donde guardar la lista de herramientas
     guardarHerramientasJSON :: FilePath -> [Herramienta] -> IO()
     guardarHerramientasJSON rutaJSON herramientasLeidas = do
-        herramientasExistentes <- obtenerHerramientas rutaJSON
-        let todasHerramientas = herramientasExistentes ++ herramientasLeidas
-            herramientasActualizadas = eliminarDuplicados todasHerramientas
-        mostrarListaHerramientas herramientasActualizadas
+        herramientasExistentes <- obtenerHerramientas rutaJSON -- obtiene las herramientas del archivo .json
+        let todasHerramientas = herramientasExistentes ++ herramientasLeidas --une las nuevas herramientas y las herramientas existentes
+            herramientasActualizadas = eliminarDuplicados todasHerramientas -- eliminamos las herramientas duplicadas en la lista unida
+        mostrarListaHerramientas herramientasActualizadas 
         BL.writeFile rutaJSON(encode herramientasActualizadas)
         putStrLn ("Herramientas guardadas exitósamente...")
 
