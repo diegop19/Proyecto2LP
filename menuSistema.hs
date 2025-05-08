@@ -236,7 +236,7 @@ module MenuSistema where
                 
             "3" -> do
                 clearConsole
-                return ()
+                menuGeneral
                 
             _ -> do
                 clearConsole
