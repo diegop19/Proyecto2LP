@@ -776,188 +776,217 @@ module ManipulacionDatos (mostrarHerramientasUSER, guardarHerramientasUSER, most
 {------------------------------------------------------------------------}
 -- CANCELACION DE COSECHAS 
 
-    cancelarCosecha :: Int -> IO Bool
-    cancelarCosecha idCosecha = do
-        cosechas <- obtenerCosechas "cosechas.json"
-        case find (\c -> identificadorCosecha c == idCosecha && estadoCosecha c) cosechas of
-            Nothing -> return False  -- O no encontro la cosecha o ya esta cerrada
-            Just _ -> do
-                let nuevasCosechas = filter (\c -> identificadorCosecha c /= idCosecha) cosechas
-                guardarCosechas nuevasCosechas
-                return True
+-- funcion principal para cancelar una cosecha
 
-
-    cancelarCosechaUSER   :: IO ()
-    cancelarCosechaUSER   = do
-        putStrLn "Ingrese el ID de la cosecha a cancelar:"
-        input <- getLine
-        case readMaybe input of
-            Nothing -> do
-                putStrLn "ID inválido. Debe ser un número."
-                cancelarCosechaUSER  
-            Just idC -> do
-                resultado <- cancelarCosecha idC
-                if resultado
-                    then putStrLn $ "Cosecha #" ++ show idC ++ " cancelada exitosamente."
-                    else putStrLn $ "No se pudo cancelar la cosecha #" ++ show idC ++ 
-                                ". Verifique que existe y no está cerrada."
+cancelarCosecha :: Int -> IO Bool
+cancelarCosecha idCosecha = do
+    -- obtiene todas las cosechas del archivo JSON
+    cosechas <- obtenerCosechas "cosechas.json"
+    
+    -- Busca la cosecha que coincida con el ID y esté activa
+    case find (\c -> identificadorCosecha c == idCosecha && estadoCosecha c) cosechas of
+        Nothing -> return False  -- No se encontró o ya está cerrada
+        Just _ -> do
+            -- Filtra para eliminar la cosecha específica
+            let nuevasCosechas = filter (\c -> identificadorCosecha c /= idCosecha) cosechas
+            -- Guarda la lista actualizada en el archivo
+            guardarCosechas nuevasCosechas
+            return True
+s
+cancelarCosechaUSER :: IO ()
+cancelarCosechaUSER = do
+    putStrLn "Ingrese el ID de la cosecha a cancelar:"
+    input <- getLine
+    case readMaybe input of
+        Nothing -> do
+            -- Validacion de entrada numérica
+            putStrLn "ID inválido. Debe ser un número."
+            cancelarCosechaUSER  -- Vuelve a solicitar el dato
+        Just idC -> do
+            -- Intenta cancelar la cosecha
+            resultado <- cancelarCosecha idC
+            if resultado
+                then putStrLn $ "Cosecha #" ++ show idC ++ " cancelada exitosamente."
+                else putStrLn $ "No se pudo cancelar la cosecha #" ++ show idC ++ 
+                            ". Verifique que existe y no está cerrada."
 
 {------------------------------------------------------------------------}
 -- MODIFICACIÓN DE COSECHAS 
 
-    modificarCosecha :: IO ()
-    modificarCosecha = do
-        mostrarCosechasUSER
-        
-        putStrLn "Ingrese el ID de la cosecha a modificar:"
-        idStr <- getLine
-        case convertirAEntero idStr of
-            Nothing -> do
-                putStrLn "ID inválido. Debe ser un número."
-                modificarCosecha
-            Just idCosecha -> do
-                cosechas <- obtenerCosechas "cosechas.json"
-                parcelas <- leerParcelas "parcelas.json"
-                
-                case buscarCosechaPorId idCosecha cosechas of
-                    Nothing -> do
-                        putStrLn "No se encontró la cosecha con ese ID."
-                        modificarCosecha
-                    Just cosecha -> do
-                        if not (estadoCosecha cosecha)
-                            then do
-                                putStrLn "No se puede modificar una cosecha cerrada."
-                                modificarCosecha
-                            else do
-                                let mParcela = find (\p -> codigoParcela p == idParcelaCosecha cosecha) parcelas
-                                
-                                case mParcela of
-                                    Nothing -> do
-                                        putStrLn "Error: No se encontró la parcela asociada a esta cosecha."
-                                        modificarCosecha
-                                    Just parcela -> do
-                                        putStrLn "\nInformación actual de la cosecha:"
-                                        mostrarCosechaSola cosecha
-                                        
-                                        putStrLn "\n¿Qué desea modificar?"
-                                        putStrLn "1- Parcela"
-                                        putStrLn "2- Fechas"
-                                        putStrLn "3- Tipo de vegetal"
-                                        putStrLn "4- Cancelar"
-                                        putStr "Seleccione una opción: "
-                                        opcion <- getLine
-                                        
-                                        case opcion of
-                                            "1" -> modificarParcelaCosecha idCosecha cosecha parcelas
-                                            "2" -> modificarFechasCosecha idCosecha cosecha
-                                            "3" -> modificarVegetalCosecha idCosecha cosecha parcela
-                                            "4" -> putStrLn "Modificación cancelada."
-                                            _ -> do
-                                                putStrLn "Opción inválida."
-                                                modificarCosecha
-
-    -- Función para modificar la parcela de una cosecha
-    modificarParcelaCosecha :: Int -> Cosecha -> [Parcela] -> IO ()
-    modificarParcelaCosecha idCosecha cosecha parcelas = do
-        putStrLn "\nParcelas disponibles:"
-        mostrarParcelas parcelas
-        
-        putStrLn "\nIngrese el nuevo ID de parcela:"
-        idStr <- getLine
-        case convertirAEntero idStr of
-            Nothing -> do
-                putStrLn "ID inválido."
-                modificarParcelaCosecha idCosecha cosecha parcelas
-            Just nuevaParcelaId -> do
-                case find (\p -> codigoParcela p == nuevaParcelaId) parcelas of
-                    Nothing -> do
-                        putStrLn "No existe una parcela con ese ID."
-                        modificarParcelaCosecha idCosecha cosecha parcelas
-                    Just nuevaParcela -> do
-                        let vegetalesNuevaParcela = vegetales nuevaParcela
-                            vegetalActual = tipoVegetalCosecha cosecha
-                        
-                        if not (any (\v -> tipoVegetal v == vegetalActual) vegetalesNuevaParcela)
-                            then do
-                                putStrLn "El vegetal actual no está en la nueva parcela."
-                                putStrLn "Vegetales disponibles en la nueva parcela:"
-                                mapM_ imprimirVegetal vegetalesNuevaParcela
-                                modificarParcelaCosecha idCosecha cosecha parcelas
-                            else do
-                                cosechas <- obtenerCosechas "cosechas.json"
-                                let nuevaCosecha = cosecha {
-                                        idParcelaCosecha = nuevaParcelaId
-                                    }
-                                
-                                if validarDisponibilidad nuevaCosecha (filter (\c -> identificadorCosecha c /= idCosecha) cosechas)
-                                    then do
-                                        let nuevasCosechas = map (\c -> 
-                                                if identificadorCosecha c == idCosecha 
-                                                    then nuevaCosecha 
-                                                    else c) cosechas
-                                        guardarCosechas nuevasCosechas
-                                        putStrLn "Parcela modificada exitosamente."
-                                    else do
-                                        putStrLn "La parcela no está disponible en las fechas seleccionadas."
-                                        modificarParcelaCosecha idCosecha cosecha parcelas
-
-    -- Función para modificar las fechas de una cosecha
-    modificarFechasCosecha :: Int -> Cosecha -> IO ()
-    modificarFechasCosecha idCosecha cosecha = do
-        putStrLn "\nIngrese la nueva fecha de inicio (AAAA-MM-DD):"
-        nuevaInicio <- pedirFechaValida
-        putStrLn "Ingrese la nueva fecha de finalización (AAAA-MM-DD):"
-        nuevaFin <- pedirFechaValida
+-- | Funcion principal para modificar cosechas
+Guía al usuario a través del proceso de modificación
+modificarCosecha :: IO ()
+modificarCosecha = do
+    -- Muestra todas las cosechas para referencia
+    mostrarCosechasUSER
     
-        fechasValidas <- validarFechas nuevaInicio nuevaFin
-        if not fechasValidas
-            then do
-                putStrLn "Las fechas ingresadas son inválidas."
-                modificarFechasCosecha idCosecha cosecha
-            else do
-                cosechas <- obtenerCosechas "cosechas.json"
-                let nuevaCosecha = cosecha {
-                        fechaInicio = nuevaInicio,
-                        fechaFinal = nuevaFin
-                    }
-                
-                if validarDisponibilidad nuevaCosecha (filter (\c -> identificadorCosecha c /= idCosecha) cosechas)
-                    then do
-                        let nuevasCosechas = map (\c -> 
-                                if identificadorCosecha c == idCosecha 
-                                    then nuevaCosecha 
-                                    else c) cosechas
-                        guardarCosechas nuevasCosechas
-                        putStrLn "Fechas modificadas exitosamente."
-                    else do
-                        putStrLn "La parcela no está disponible en las nuevas fechas."
-                        modificarFechasCosecha idCosecha cosecha
+    putStrLn "Ingrese el ID de la cosecha a modificar:"
+    idStr <- getLine
+    case convertirAEntero idStr of
+        Nothing -> do
 
-    -- Función para modificar el tipo de vegetal de una cosecha
-    modificarVegetalCosecha :: Int -> Cosecha -> Parcela -> IO ()
-    modificarVegetalCosecha idCosecha cosecha parcela = do
-        let vegetalesParcela = vegetales parcela
+            putStrLn "ID inválido. Debe ser un número."
+            modificarCosecha
+        Just idCosecha -> do
+            -- Obtiene datos necesarios
+            cosechas <- obtenerCosechas "cosechas.json"
+            parcelas <- leerParcelas "parcelas.json"
+            
+            case buscarCosechaPorId idCosecha cosechas of
+                Nothing -> do
+                    putStrLn "No se encontró la cosecha con ese ID."
+                    modificarCosecha
+                Just cosecha -> do
+                    -- Verifica que la cosecha esté activa
+                    if not (estadoCosecha cosecha)
+                        then do
+                            putStrLn "No se puede modificar una cosecha cerrada."
+                            modificarCosecha
+                        else do
+                            -- Obtiene la parcela asociada
+                            let mParcela = find (\p -> codigoParcela p == idParcelaCosecha cosecha) parcelas
+                            
+                            case mParcela of
+                                Nothing -> do
+                                    putStrLn "Error: No se encontró la parcela asociada a esta cosecha."
+                                    modificarCosecha
+                                Just parcela -> do
+                                    -- Muestra información actual
+                                    putStrLn "\nInformación actual de la cosecha:"
+                                    mostrarCosechaSola cosecha
+                                    
+                                    putStrLn "\n¿Qué desea modificar?"
+                                    putStrLn "1- Parcela"
+                                    putStrLn "2- Fechas"
+                                    putStrLn "3- Tipo de vegetal"
+                                    putStrLn "4- Cancelar"
+                                    putStr "Seleccione una opción: "
+                                    opcion <- getLine
+                                    
+                                    case opcion of
+                                        "1" -> modificarParcelaCosecha idCosecha cosecha parcelas
+                                        "2" -> modificarFechasCosecha idCosecha cosecha
+                                        "3" -> modificarVegetalCosecha idCosecha cosecha parcela
+                                        "4" -> putStrLn "Modificación cancelada."
+                                        _ -> do
+                                            putStrLn "Opción inválida."
+                                            modificarCosecha
+
+-- | Modifica la parcela asociada a una cosecha
+modificarParcelaCosecha :: Int -> Cosecha -> [Parcela] -> IO ()
+modificarParcelaCosecha idCosecha cosecha parcelas = do
+    -- Muestra parcelas disponibles
+    putStrLn "\nParcelas disponibles:"
+    mostrarParcelas parcelas
+    
+    putStrLn "\nIngrese el nuevo ID de parcela:"
+    idStr <- getLine
+    case convertirAEntero idStr of
+        Nothing -> do
+            putStrLn "ID inválido."
+            modificarParcelaCosecha idCosecha cosecha parcelas
+        Just nuevaParcelaId -> do
+            -- Busca la nueva parcela
+            case find (\p -> codigoParcela p == nuevaParcelaId) parcelas of
+                Nothing -> do
+                    putStrLn "No existe una parcela con ese ID."
+                    modificarParcelaCosecha idCosecha cosecha parcelas
+                Just nuevaParcela -> do
+                    -- Verifica compatibilidad del vegetal
+                    let vegetalesNuevaParcela = vegetales nuevaParcela
+                        vegetalActual = tipoVegetalCosecha cosecha
+                    
+                    if not (any (\v -> tipoVegetal v == vegetalActual) vegetalesNuevaParcela)
+                        then do
+                            putStrLn "El vegetal actual no está en la nueva parcela."
+                            putStrLn "Vegetales disponibles en la nueva parcela:"
+                            mapM_ imprimirVegetal vegetalesNuevaParcela
+                            modificarParcelaCosecha idCosecha cosecha parcelas
+                        else do
+                            -- Valida disponibilidad en la nueva parcela
+                            cosechas <- obtenerCosechas "cosechas.json"
+                            let nuevaCosecha = cosecha {
+                                    idParcelaCosecha = nuevaParcelaId
+                                }
+                            
+                            if validarDisponibilidad nuevaCosecha (filter (\c -> identificadorCosecha c /= idCosecha) cosechas)
+                                then do
         
-        putStrLn "\nVegetales disponibles en esta parcela:"
-        mapM_ imprimirVegetal vegetalesParcela
-        
-        putStrLn "\nIngrese el nuevo tipo de vegetal:"
-        nuevoVegetal <- getLine
-        
-        if not (any (\v -> tipoVegetal v == nuevoVegetal) vegetalesParcela)
-            then do
-                putStrLn "El tipo de vegetal no está disponible en esta parcela."
-                modificarVegetalCosecha idCosecha cosecha parcela
-            else do
-                cosechas <- obtenerCosechas "cosechas.json"
-                let nuevaCosecha = cosecha {
-                        tipoVegetalCosecha = nuevoVegetal
-                    }
-                    nuevasCosechas = map (\c -> 
-                        if identificadorCosecha c == idCosecha 
-                            then nuevaCosecha 
-                            else c) cosechas
-                guardarCosechas nuevasCosechas
+                                    let nuevasCosechas = map (\c -> 
+                                            if identificadorCosecha c == idCosecha 
+                                                then nuevaCosecha 
+                                                else c) cosechas
+                                    guardarCosechas nuevasCosechas
+                                    putStrLn "Parcela modificada exitosamente."
+                                else do
+                                    putStrLn "La parcela no está disponible en las fechas seleccionadas."
+                                    modificarParcelaCosecha idCosecha cosecha parcelas
+
+-- | Modifica las fechas de una cosecha
+modificarFechasCosecha :: Int -> Cosecha -> IO ()
+modificarFechasCosecha idCosecha cosecha = do
+    -- Solicita nuevas fechas
+    putStrLn "\nIngrese la nueva fecha de inicio (AAAA-MM-DD):"
+    nuevaInicio <- pedirFechaValida
+    putStrLn "Ingrese la nueva fecha de finalización (AAAA-MM-DD):"
+    nuevaFin <- pedirFechaValida
+
+    fechasValidas <- validarFechas nuevaInicio nuevaFin
+    if not fechasValidas
+        then do
+            putStrLn "Las fechas ingresadas son inválidas."
+            modificarFechasCosecha idCosecha cosecha
+        else do
+            -- Verifica disponibilidad con las nuevas fechas
+            cosechas <- obtenerCosechas "cosechas.json"
+            let nuevaCosecha = cosecha {
+                    fechaInicio = nuevaInicio,
+                    fechaFinal = nuevaFin
+                }
+            
+            if validarDisponibilidad nuevaCosecha (filter (\c -> identificadorCosecha c /= idCosecha) cosechas)
+                then do
+                    -- Actualiza y guarda los cambios
+                    let nuevasCosechas = map (\c -> 
+                            if identificadorCosecha c == idCosecha 
+                                then nuevaCosecha 
+                                else c) cosechas
+                    guardarCosechas nuevasCosechas
+                    putStrLn "Fechas modificadas exitosamente."
+                else do
+                    putStrLn "La parcela no está disponible en las nuevas fechas."
+                    modificarFechasCosecha idCosecha cosecha
+
+-- | Modifica el vegetal de una cosecha
+modificarVegetalCosecha :: Int -> Cosecha -> Parcela -> IO ()
+modificarVegetalCosecha idCosecha cosecha parcela = do
+    -- Muestra vegetales disponibles en la parcela actual
+    let vegetalesParcela = vegetales parcela
+    
+    putStrLn "\nVegetales disponibles en esta parcela:"
+    mapM_ imprimirVegetal vegetalesParcela
+    
+    -- Solicita nuevo vegetal
+    putStrLn "\nIngrese el nuevo tipo de vegetal:"
+    nuevoVegetal <- getLine
+    
+    -- Verifica que el vegetal exista en la parcela
+    if not (any (\v -> tipoVegetal v == nuevoVegetal) vegetalesParcela)
+        then do
+            putStrLn "El tipo de vegetal no está disponible en esta parcela."
+            modificarVegetalCosecha idCosecha cosecha parcela
+        else do
+            -- Actualiza el vegetal
+            cosechas <- obtenerCosechas "cosechas.json"
+            let nuevaCosecha = cosecha {
+                    tipoVegetalCosecha = nuevoVegetal
+                }
+                nuevasCosechas = map (\c -> 
+                    if identificadorCosecha c == idCosecha 
+                        then nuevaCosecha 
+                        else c) cosechas
+            guardarCosechas nuevasCosechas
+            putStrLn "Tipo de vegetal modificado exitosamente."
                 putStrLn "Tipo de vegetal modificado exitosamente."
 
 {-------------------------------------------------------------------------}
